@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V3.0)</title>
+    <title>Player Estudo Pro (V4.0)</title>
     <style>
         /* --- ESTILO GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -16,12 +16,17 @@
         /* --- CONTROLES DE ARQUIVO --- */
         #file-controls { 
             padding: 10px; background: #1a1a1a; font-size: 0.8rem; 
-            display: flex; gap: 10px; z-index: 10; border-bottom: 1px solid #333;
+            display: flex; gap: 8px; z-index: 10; border-bottom: 1px solid #333;
+            flex-wrap: wrap; justify-content: space-between;
         }
         .custom-file-upload {
             border: 1px solid #444; display: flex; align-items: center; justify-content: center;
             padding: 10px; cursor: pointer; background: #333; border-radius: 6px; 
-            flex-grow: 1; text-align: center; font-weight: 600;
+            flex-grow: 1; text-align: center; font-weight: 600; font-size: 0.85rem;
+        }
+        .btn-link {
+            text-decoration: none; color: #f1c40f; font-size: 0.75rem; 
+            display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 5px;
         }
         input[type="file"] { display: none; }
 
@@ -31,32 +36,42 @@
             align-items: center; justify-content: center; background: #000; 
             overflow: hidden;
         }
-        /* O atributo controls garante que o Play/Pause nativo funcione */
         video { width: 100%; max-height: 100%; object-fit: contain; }
 
         /* --- LEGENDAS --- */
         #subtitle-container {
-            position: absolute; bottom: 15%; width: 95%;
+            position: absolute; bottom: 12%; width: 95%;
             text-align: center; pointer-events: none; 
             z-index: 20;
+            /* Flexbox para garantir centralização */
+            display: flex; justify-content: center;
         }
         .subtitle-box {
-            display: inline-block;
-            background-color: rgba(0, 0, 0, 0.7); /* Fundo escuro para leitura */
-            padding: 12px 16px;
-            border-radius: 8px;
-            pointer-events: auto; /* Permite tocar nas palavras */
+            display: inline-block; /* Permite que o fundo acompanhe o texto */
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 12px;
+            pointer-events: auto; /* Permite toque */
             user-select: none; 
             -webkit-user-select: none;
             touch-action: none; 
+            
+            /* TRUQUE PARA MULTI-LINHA: */
+            /* Diminui o espaço entre linhas para o dedo não 'perder' a seleção */
+            line-height: 1.4; 
+            max-width: 95%;
         }
 
         /* --- PALAVRAS --- */
         .word {
-            font-size: 1.3rem; line-height: 1.6rem;
-            padding: 2px 2px; margin: 0 1px;
-            border-radius: 4px; transition: background 0.1s;
-            display: inline-block; cursor: pointer;
+            font-size: 1.25rem; 
+            padding: 4px 1px; /* Aumenta a área de toque verticalmente */
+            margin: 0; /* Remove margem para não ter buracos entre palavras */
+            border-radius: 4px; 
+            display: inline; /* Importante para fluir como texto normal */
+            cursor: pointer;
+            box-decoration-break: clone; /* Garante estilo correto na quebra de linha */
+            -webkit-box-decoration-break: clone;
         }
         .word.selected { background-color: #f1c40f; color: #000; }
 
@@ -96,6 +111,9 @@
             📝 Legenda
             <input type="file" id="subInput" accept=".srt, .vtt">
         </label>
+        <a href="https://freesubtitles.ai/" target="_blank" class="btn-link">
+            Não tem legenda? Clique aqui para gerar (Site Externo)
+        </a>
     </div>
 
     <div id="video-wrapper">
@@ -115,7 +133,7 @@
     </div>
 
     <script>
-        // --- VARIÁVEIS GLOBAIS ---
+        // --- VARIÁVEIS ---
         const video = document.getElementById('mainVideo');
         const subContent = document.getElementById('subtitle-content');
         const transCard = document.getElementById('translation-card');
@@ -124,22 +142,15 @@
         const gestureIcon = document.getElementById('gesture-feedback');
         
         let subtitles = [];
-        let currentSubIndex = -1;
         let isSelecting = false;
         let selectedWords = new Set();
+        let lastRenderedText = ""; // Evita piscar a legenda
 
-        // --- 1. CARREGAR VÍDEO ---
+        // --- 1. CARREGAMENTOS ---
         document.getElementById('videoInput').onchange = e => {
-            const file = e.target.files[0];
-            if(file) {
-                // Cria URL local temporária
-                video.src = URL.createObjectURL(file);
-                // Tenta dar play automático (pode ser bloqueado pelo navegador)
-                // video.play().catch(() => {}); 
-            }
+            if(e.target.files[0]) video.src = URL.createObjectURL(e.target.files[0]);
         };
 
-        // --- 2. CARREGAR LEGENDA (SRT ou VTT) ---
         document.getElementById('subInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
@@ -147,27 +158,23 @@
                 reader.onload = r => { 
                     try {
                         subtitles = parseSubtitles(r.target.result); 
-                        alert(`Legenda carregada com sucesso!\n${subtitles.length} linhas encontradas.`);
-                    } catch (err) {
-                        alert("Erro ao ler legenda. Verifique o arquivo.");
-                    }
+                        alert(`Legenda pronta! ${subtitles.length} linhas.`);
+                    } catch(e) { alert("Erro no arquivo."); }
                 };
                 reader.readAsText(file);
             }
         };
 
-        // --- 3. PARSER INTELIGENTE (Lê SRT e VTT) ---
+        // --- 2. PARSER ---
         function parseSubtitles(text) {
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             const pattern = /(?:^|\n)(?:(\d+)\n)?(\d{2}:\d{2}:\d{2}[,.]\d{3})\s-->\s(\d{2}:\d{2}:\d{2}[,.]\d{3}).*?\n([\s\S]*?)(?=\n\n|$)/g;
-            
             const result = [];
             let match;
             while ((match = pattern.exec(text)) !== null) {
                 result.push({
                     start: timeToSec(match[2]),
                     end: timeToSec(match[3]),
-                    // Remove HTML e limpa espaços
                     text: match[4].trim().replace(/\n/g, ' ').replace(/<[^>]*>/g, '') 
                 });
             }
@@ -175,67 +182,63 @@
         }
 
         function timeToSec(str) {
-            str = str.replace(',', '.'); // Garante formato numérico JS
+            str = str.replace(',', '.');
             const p = str.split(':');
             return (parseFloat(p[0]) * 3600) + (parseFloat(p[1]) * 60) + parseFloat(p[2]);
         }
 
-        // --- 4. SINCRONIA VÍDEO <-> LEGENDA ---
+        // --- 3. RENDERIZAÇÃO ---
         video.addEventListener('timeupdate', () => {
             const time = video.currentTime;
-            // Busca legenda correspondente ao tempo atual
-            const idx = subtitles.findIndex(s => time >= s.start && time <= s.end);
+            const sub = subtitles.find(s => time >= s.start && time <= s.end);
             
-            if (idx !== -1 && idx !== currentSubIndex) {
-                currentSubIndex = idx;
-                renderSubtitle(subtitles[idx].text);
-                // Esconde tradução antiga ao mudar de frase
-                // transCard.style.display = 'none'; 
-            } else if (idx === -1) {
+            if (sub) {
+                // Só renderiza se o texto mudou (performance e não perder seleção)
+                if (sub.text !== lastRenderedText) {
+                    renderSubtitle(sub.text);
+                    lastRenderedText = sub.text;
+                }
+            } else {
                 subContent.innerHTML = '';
-                currentSubIndex = -1;
+                lastRenderedText = "";
             }
         });
 
-        // Renderiza cada palavra em um <span> separado
         function renderSubtitle(text) {
             subContent.innerHTML = '';
             const words = text.split(' ');
             words.forEach((w, i) => {
                 const span = document.createElement('span');
-                span.textContent = w + ' '; // Espaço visual
+                span.textContent = w + ' ';
                 span.className = 'word';
                 span.dataset.index = i;
-                // Guarda versão limpa (sem pontuação) para API
                 span.dataset.raw = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g,"");
                 subContent.appendChild(span);
             });
         }
 
-        // --- 5. INTERATIVIDADE (TOUCH SELECTION) ---
+        // --- 4. TOQUE E SELEÇÃO (Modo eJoy Multi-linha) ---
         subContent.addEventListener('touchstart', (e) => {
             isSelecting = true;
             selectedWords.clear();
             transCard.style.display = 'none';
-            video.pause(); // Pausa o vídeo para facilitar seleção
+            video.pause(); 
             handleSelection(e.touches[0]);
         }, {passive: false});
 
         subContent.addEventListener('touchmove', (e) => {
             if (!isSelecting) return;
-            e.preventDefault(); // Impede scroll da tela
+            e.preventDefault(); 
             handleSelection(e.touches[0]);
         }, {passive: false});
 
         subContent.addEventListener('touchend', () => {
             isSelecting = false;
-            if (selectedWords.size > 0) {
-                translateSelection();
-            }
+            if (selectedWords.size > 0) translateSelection();
         });
 
         function handleSelection(touch) {
-            // Detecta elemento sob o dedo
+            // Pega o elemento visualmente abaixo do dedo
             const element = document.elementFromPoint(touch.clientX, touch.clientY);
             if (element && element.classList.contains('word')) {
                 element.classList.add('selected');
@@ -244,50 +247,40 @@
         }
 
         async function translateSelection() {
-            // Ordena palavras selecionadas pela ordem na frase
+            // Ordena pelo índice para garantir que "Guy And Like" fique na ordem certa
+            // mesmo se selecionados em movimentos diferentes
             const wordsArray = Array.from(selectedWords).sort((a, b) => a.dataset.index - b.dataset.index);
             
             const phraseClean = wordsArray.map(el => el.dataset.raw).join(' ');
             const phraseDisplay = wordsArray.map(el => el.textContent).join('');
 
-            // Mostra Modal
             transCard.style.display = 'block';
             transOrig.textContent = phraseDisplay;
             transRes.className = 'loading';
-            transRes.textContent = 'Carregando...';
+            transRes.textContent = '...';
 
-            // Remove destaque amarelo após 1s
             setTimeout(() => {
                 document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
-            }, 1000);
+            }, 1500);
 
-            // API MyMemory
             try {
                 const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(phraseClean)}&langpair=en|pt-BR`;
                 const res = await fetch(url);
                 const data = await res.json();
-                
                 if(data.responseData) {
                     transRes.className = '';
                     transRes.textContent = data.responseData.translatedText;
-                } else {
-                    transRes.textContent = "Não encontrado.";
                 }
-            } catch (err) {
-                transRes.textContent = "Erro de conexão.";
-            }
+            } catch (err) { transRes.textContent = "Erro de rede"; }
         }
 
-        // --- 6. GESTOS DE NAVEGAÇÃO (SWIPE) ---
+        // --- 5. GESTOS DE NAVEGAÇÃO (Corrigido) ---
         const gestureZone = document.getElementById('video-wrapper');
         let touchStartX = 0;
         let touchEndX = 0;
 
         gestureZone.addEventListener('touchstart', e => {
-            // Ignora se tocar na legenda (para não conflitar com seleção)
-            if(!e.target.closest('#subtitle-container')) {
-                touchStartX = e.changedTouches[0].screenX;
-            }
+            if(!e.target.closest('#subtitle-container')) touchStartX = e.changedTouches[0].screenX;
         }, {passive: false});
 
         gestureZone.addEventListener('touchend', e => {
@@ -299,29 +292,49 @@
 
         function handleGesture() {
             const diff = touchEndX - touchStartX;
-            if (Math.abs(diff) < 50) return; // Movimento curto demais = ignora
+            if (Math.abs(diff) < 50) return;
 
-            if (diff < 0) {
-                // Swipe Esquerda (<--)
+            if (diff < 0) { // Swipe Esquerda (Voltar)
                 showFeedback('⏪');
-                jumpSubtitle(-1); // Volta
-            } else {
-                // Swipe Direita (-->)
+                jumpSubtitle(-1);
+            } else { // Swipe Direita (Avançar)
                 showFeedback('⏩');
-                jumpSubtitle(1); // Avança
+                jumpSubtitle(1);
             }
         }
 
+        // NOVA LÓGICA DE PULO (Mais robusta)
         function jumpSubtitle(direction) {
             if (subtitles.length === 0) return;
-            let targetIndex = currentSubIndex + direction;
             
-            // Limites do array
+            const now = video.currentTime;
+            
+            // Encontra qual é o índice da legenda que está rolando OU a próxima que virá
+            let referenceIndex = subtitles.findIndex(s => s.start > now);
+            
+            // Se referenceIndex for -1, significa que o vídeo está no fim (após a última legenda)
+            if (referenceIndex === -1) referenceIndex = subtitles.length;
+
+            // Se estamos NO MEIO de uma legenda agora, usamos o índice dela como base
+            const currentActiveIndex = subtitles.findIndex(s => now >= s.start && now <= s.end);
+            if (currentActiveIndex !== -1) {
+                referenceIndex = currentActiveIndex;
+            } else {
+                // Se estamos no silêncio, 'referenceIndex' aponta para a próxima. 
+                // Para a lógica funcionar, vamos fingir que estamos na anterior a ela.
+                if (direction === 1) referenceIndex = referenceIndex - 1; 
+            }
+
+            // Calcula o alvo
+            let targetIndex = referenceIndex + direction;
+
+            // Proteções de limite
             if (targetIndex < 0) targetIndex = 0;
             if (targetIndex >= subtitles.length) targetIndex = subtitles.length - 1;
-            
-            // Pula vídeo para o tempo da legenda + micro ajuste
-            video.currentTime = subtitles[targetIndex].start + 0.1;
+
+            // Pula!
+            // Adiciona +0.01s para garantir que entre na área da legenda
+            video.currentTime = subtitles[targetIndex].start + 0.01;
             video.play();
         }
 
@@ -331,16 +344,9 @@
             setTimeout(() => gestureIcon.style.opacity = 0, 600);
         }
 
-        // --- 7. DIAGNÓSTICO DE ERROS (Importante para iPhone) ---
+        // --- 6. ERROS ---
         video.onerror = function() {
-            let msg = "Erro desconhecido.";
-            if (video.error) {
-                switch (video.error.code) {
-                    case 3: msg = "Erro de decodificação."; break;
-                    case 4: msg = "FORMATO NÃO SUPORTADO!\nO iPhone só roda vídeos MP4 (H.264).\nSe o seu arquivo é .MKV ou .AVI, converta para .MP4 antes."; break;
-                }
-            }
-            alert("⚠️ " + msg);
+            if(video.error) alert("Erro no vídeo. Certifique-se que é MP4.");
         };
     </script>
 </body>

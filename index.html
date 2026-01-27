@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V5.0)</title>
+    <title>Player Estudo Pro (V5.1)</title>
     <style>
         /* --- ESTILO GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -17,6 +17,7 @@
         #controls-wrapper {
             background: #1a1a1a; border-bottom: 1px solid #333; z-index: 50;
             padding: 8px;
+            transition: opacity 0.3s; /* Suaviza o sumiço */
         }
 
         #file-controls { 
@@ -55,8 +56,8 @@
 
         /* --- LEGENDAS --- */
         #subtitle-container {
-            /* AJUSTE: Mais próximo do fundo (4%) */
-            position: absolute; bottom: 4%; width: 95%;
+            /* AJUSTE 1: Subindo a legenda para não cortar (de 4% para 10%) */
+            position: absolute; bottom: 10%; width: 95%;
             text-align: center; pointer-events: none; 
             z-index: 20;
             display: flex; justify-content: center;
@@ -64,25 +65,27 @@
 
         .subtitle-box {
             display: inline-block;
-            /* Cores padrão (serão alteradas pelo JS) */
             background-color: rgba(0, 0, 0, 0.7);
             color: #ffffff;
-            
             padding: 8px 12px;
             border-radius: 8px;
-            pointer-events: auto; /* Permite toque */
+            pointer-events: auto;
             user-select: none; -webkit-user-select: none; touch-action: none;
             line-height: 1.4; max-width: 98%;
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* Ajuste para telas horizontais (Landscape) */
+        /* --- AJUSTES PARA MODO HORIZONTAL (Landscape) --- */
         @media (orientation: landscape) {
-            #subtitle-container { bottom: 8%; } /* Sobe um pouquinho na horizontal */
+            /* AJUSTE 2: Oculta os controles no modo horizontal */
+            #controls-wrapper { display: none; }
+            
+            /* Mantém a legenda em boa posição */
+            #subtitle-container { bottom: 8%; } 
             .subtitle-box { font-size: 1.1rem; padding: 6px 15px; }
         }
 
-        /* --- PALAVRAS --- */
+        /* --- PALAVRAS E BOTÕES --- */
         .word {
             font-size: 1.2rem; padding: 4px 1px; margin: 0;
             border-radius: 4px; display: inline; cursor: pointer;
@@ -90,7 +93,6 @@
         }
         .word.selected { background-color: #f1c40f !important; color: #000 !important; }
 
-        /* --- BOTÃO TRADUZIR FRASE --- */
         .translate-btn {
             display: inline-flex; align-items: center; justify-content: center;
             background: #fff; color: #000; border-radius: 50%;
@@ -153,13 +155,10 @@
 
     <div id="video-wrapper">
         <video id="mainVideo" controls playsinline></video>
-        
         <div id="gesture-feedback">⏪</div>
-        
         <div id="subtitle-container">
             <div id="subtitle-content" class="subtitle-box"></div>
         </div>
-
         <div id="translation-card">
             <div id="phrase-orig">Original</div>
             <div id="phrase-trans">Tradução...</div>
@@ -168,15 +167,13 @@
     </div>
 
     <script>
-        // --- VARIÁVEIS ---
+        // --- JS (Sem alterações, apenas a lógica existente) ---
         const video = document.getElementById('mainVideo');
         const subContent = document.getElementById('subtitle-content');
         const transCard = document.getElementById('translation-card');
         const transOrig = document.getElementById('phrase-orig');
         const transRes = document.getElementById('phrase-trans');
         const gestureIcon = document.getElementById('gesture-feedback');
-        
-        // Pickers de Cor
         const textColorInput = document.getElementById('textColor');
         const bgColorInput = document.getElementById('bgColor');
 
@@ -184,21 +181,16 @@
         let isSelecting = false;
         let selectedWords = new Set();
         let lastRenderedText = "";
-        
-        // Variáveis de Estilo
         let currentTextColor = "#ffffff";
         let currentBgColor = "rgba(0, 0, 0, 0.7)";
 
-        // --- 1. CONFIGURAÇÃO DE CORES ---
         textColorInput.addEventListener('input', (e) => {
             currentTextColor = e.target.value;
             subContent.style.color = currentTextColor;
         });
 
-        // Converte Hex para RGB com transparência para o fundo ficar bonito
         bgColorInput.addEventListener('input', (e) => {
             const hex = e.target.value;
-            // Transforma #RRGGBB em rgba(r,g,b, 0.7)
             const r = parseInt(hex.slice(1, 3), 16);
             const g = parseInt(hex.slice(3, 5), 16);
             const b = parseInt(hex.slice(5, 7), 16);
@@ -206,7 +198,6 @@
             subContent.style.backgroundColor = currentBgColor;
         });
 
-        // --- 2. CARREGAMENTOS ---
         document.getElementById('videoInput').onchange = e => {
             if(e.target.files[0]) video.src = URL.createObjectURL(e.target.files[0]);
         };
@@ -225,7 +216,6 @@
             }
         };
 
-        // --- 3. PARSER ---
         function parseSubtitles(text) {
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             const pattern = /(?:^|\n)(?:(\d+)\n)?(\d{2}:\d{2}:\d{2}[,.]\d{3})\s-->\s(\d{2}:\d{2}:\d{2}[,.]\d{3}).*?\n([\s\S]*?)(?=\n\n|$)/g;
@@ -247,11 +237,9 @@
             return (parseFloat(p[0]) * 3600) + (parseFloat(p[1]) * 60) + parseFloat(p[2]);
         }
 
-        // --- 4. RENDERIZAÇÃO COM BOTÃO ---
         video.addEventListener('timeupdate', () => {
             const time = video.currentTime;
             const sub = subtitles.find(s => time >= s.start && time <= s.end);
-            
             if (sub) {
                 if (sub.text !== lastRenderedText) {
                     renderSubtitle(sub.text);
@@ -265,8 +253,6 @@
 
         function renderSubtitle(text) {
             subContent.innerHTML = '';
-            
-            // Renderiza palavras
             const words = text.split(' ');
             words.forEach((w, i) => {
                 const span = document.createElement('span');
@@ -276,26 +262,20 @@
                 span.dataset.raw = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g,"");
                 subContent.appendChild(span);
             });
-
-            // Adiciona o Botão "Traduzir Tudo" no final
             const btn = document.createElement('span');
             btn.className = 'translate-btn';
-            btn.innerHTML = '🌐'; // Ícone de globo
-            
-            // Impede que o toque no botão dispare a seleção de texto
+            btn.innerHTML = '🌐';
             btn.addEventListener('touchstart', (e) => { e.stopPropagation(); });
             btn.onclick = (e) => {
-                e.stopPropagation(); // Não pausa o vídeo se clicar no botão (opcional)
+                e.stopPropagation();
                 video.pause();
-                translateText(text, text); // Traduz o texto completo
+                translateText(text, text);
             };
-            
             subContent.appendChild(btn);
         }
 
-        // --- 5. TOQUE E SELEÇÃO ---
         subContent.addEventListener('touchstart', (e) => {
-            if(e.target.classList.contains('translate-btn')) return; // Ignora se tocou no botão
+            if(e.target.classList.contains('translate-btn')) return;
             isSelecting = true;
             selectedWords.clear();
             transCard.style.display = 'none';
@@ -326,21 +306,17 @@
             const wordsArray = Array.from(selectedWords).sort((a, b) => a.dataset.index - b.dataset.index);
             const phraseClean = wordsArray.map(el => el.dataset.raw).join(' ');
             const phraseDisplay = wordsArray.map(el => el.textContent).join('');
-            
             translateText(phraseClean, phraseDisplay);
-            
             setTimeout(() => {
                 document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
             }, 1000);
         }
 
-        // Função genérica de tradução
         async function translateText(textToApi, textToDisplay) {
             transCard.style.display = 'block';
             transOrig.textContent = textToDisplay;
             transRes.className = 'loading';
             transRes.textContent = '...';
-
             try {
                 const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToApi)}&langpair=en|pt-BR`;
                 const res = await fetch(url);
@@ -352,7 +328,6 @@
             } catch (err) { transRes.textContent = "Erro de rede"; }
         }
 
-        // --- 6. GESTOS (Swipe) ---
         const gestureZone = document.getElementById('video-wrapper');
         let touchStartX = 0;
         let touchEndX = 0;
@@ -371,7 +346,6 @@
         function handleGesture() {
             const diff = touchEndX - touchStartX;
             if (Math.abs(diff) < 50) return;
-
             if (diff < 0) { showFeedback('⏪'); jumpSubtitle(-1); } 
             else { showFeedback('⏩'); jumpSubtitle(1); }
         }
@@ -379,18 +353,14 @@
         function jumpSubtitle(direction) {
             if (subtitles.length === 0) return;
             const now = video.currentTime;
-            
             let referenceIndex = subtitles.findIndex(s => s.start > now);
             if (referenceIndex === -1) referenceIndex = subtitles.length;
-
             const currentActiveIndex = subtitles.findIndex(s => now >= s.start && now <= s.end);
             if (currentActiveIndex !== -1) referenceIndex = currentActiveIndex;
             else if (direction === 1) referenceIndex = referenceIndex - 1; 
-
             let targetIndex = referenceIndex + direction;
             if (targetIndex < 0) targetIndex = 0;
             if (targetIndex >= subtitles.length) targetIndex = subtitles.length - 1;
-
             video.currentTime = subtitles[targetIndex].start + 0.01;
             video.play();
         }
@@ -401,7 +371,6 @@
             setTimeout(() => gestureIcon.style.opacity = 0, 600);
         }
 
-        // --- 7. ERROS ---
         video.onerror = function() {
             if(video.error) alert("Erro no vídeo. Use MP4.");
         };

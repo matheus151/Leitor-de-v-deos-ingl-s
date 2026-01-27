@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (VTT/SRT)</title>
+    <title>Player Estudo Pro (V3.0)</title>
     <style>
-        /* Reset e Base */
+        /* --- ESTILO GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
@@ -13,55 +13,54 @@
             display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
 
-        /* Controles de Arquivo (Topo) */
+        /* --- CONTROLES DE ARQUIVO --- */
         #file-controls { 
             padding: 10px; background: #1a1a1a; font-size: 0.8rem; 
-            display: flex; gap: 10px; flex-wrap: wrap; z-index: 10;
+            display: flex; gap: 10px; z-index: 10; border-bottom: 1px solid #333;
         }
         .custom-file-upload {
-            border: 1px solid #444; display: inline-block; padding: 8px 12px;
-            cursor: pointer; background: #333; border-radius: 4px; flex-grow: 1; text-align: center;
-            font-weight: bold;
+            border: 1px solid #444; display: flex; align-items: center; justify-content: center;
+            padding: 10px; cursor: pointer; background: #333; border-radius: 6px; 
+            flex-grow: 1; text-align: center; font-weight: 600;
         }
         input[type="file"] { display: none; }
 
-        /* Área do Vídeo */
+        /* --- ÁREA DO VÍDEO --- */
         #video-wrapper { 
             position: relative; flex-grow: 1; display: flex; 
             align-items: center; justify-content: center; background: #000; 
             overflow: hidden;
         }
+        /* O atributo controls garante que o Play/Pause nativo funcione */
         video { width: 100%; max-height: 100%; object-fit: contain; }
 
-        /* Área de Legenda Interativa */
+        /* --- LEGENDAS --- */
         #subtitle-container {
             position: absolute; bottom: 15%; width: 95%;
             text-align: center; pointer-events: none; 
             z-index: 20;
         }
-
         .subtitle-box {
             display: inline-block;
-            background-color: rgba(0, 0, 0, 0.6);
-            padding: 10px 14px;
+            background-color: rgba(0, 0, 0, 0.7); /* Fundo escuro para leitura */
+            padding: 12px 16px;
             border-radius: 8px;
-            pointer-events: auto; 
+            pointer-events: auto; /* Permite tocar nas palavras */
             user-select: none; 
             -webkit-user-select: none;
             touch-action: none; 
         }
 
-        /* Palavras Individuais */
+        /* --- PALAVRAS --- */
         .word {
             font-size: 1.3rem; line-height: 1.6rem;
-            padding: 2px 1px; margin: 0 1px;
+            padding: 2px 2px; margin: 0 1px;
             border-radius: 4px; transition: background 0.1s;
-            display: inline-block;
+            display: inline-block; cursor: pointer;
         }
-        
         .word.selected { background-color: #f1c40f; color: #000; }
 
-        /* Modal de Tradução */
+        /* --- CARD DE TRADUÇÃO --- */
         #translation-card {
             display: none; position: absolute; top: 10%; left: 50%;
             transform: translateX(-50%); width: 90%;
@@ -73,12 +72,16 @@
         #phrase-orig { font-weight: bold; color: #555; margin-bottom: 5px; font-size: 0.9rem; }
         #phrase-trans { font-size: 1.2rem; font-weight: 800; color: #000; }
         .loading { color: #888; font-style: italic; }
+        #close-trans { 
+            margin-top: 10px; padding: 5px 15px; background: #eee; border: none; 
+            border-radius: 4px; font-size: 0.8rem;
+        }
 
-        /* Feedback visual dos gestos */
+        /* --- ÍCONE DE GESTO --- */
         #gesture-feedback {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 3rem; opacity: 0; transition: opacity 0.3s; pointer-events: none;
-            text-shadow: 0 0 10px #000;
+            font-size: 4rem; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+            text-shadow: 0 0 10px #000; z-index: 50;
         }
     </style>
 </head>
@@ -86,17 +89,18 @@
 
     <div id="file-controls">
         <label class="custom-file-upload">
-            🎬 Vídeo
-            <input type="file" id="videoInput" accept="video/*">
+            🎬 Vídeo (MP4)
+            <input type="file" id="videoInput" accept="video/mp4, video/x-m4v, video/*">
         </label>
         <label class="custom-file-upload">
-            📝 Legenda (SRT/VTT)
+            📝 Legenda
             <input type="file" id="subInput" accept=".srt, .vtt">
         </label>
     </div>
 
     <div id="video-wrapper">
-        <video id="mainVideo" playsinline></video>
+        <video id="mainVideo" controls playsinline></video>
+        
         <div id="gesture-feedback">⏪</div>
         
         <div id="subtitle-container">
@@ -104,13 +108,14 @@
         </div>
 
         <div id="translation-card">
-            <div id="phrase-orig"></div>
-            <div id="phrase-trans"></div>
+            <div id="phrase-orig">Original</div>
+            <div id="phrase-trans">Tradução...</div>
+            <button id="close-trans" onclick="document.getElementById('translation-card').style.display='none'">Fechar</button>
         </div>
     </div>
 
     <script>
-        // --- Elementos ---
+        // --- VARIÁVEIS GLOBAIS ---
         const video = document.getElementById('mainVideo');
         const subContent = document.getElementById('subtitle-content');
         const transCard = document.getElementById('translation-card');
@@ -123,33 +128,37 @@
         let isSelecting = false;
         let selectedWords = new Set();
 
-        // --- 1. Carregamento de Arquivos ---
+        // --- 1. CARREGAR VÍDEO ---
         document.getElementById('videoInput').onchange = e => {
-            if(e.target.files[0]) video.src = URL.createObjectURL(e.target.files[0]);
-        };
-
-        document.getElementById('subInput').onchange = e => {
-            if(e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = r => { 
-                    // Chama a nova função unificada
-                    subtitles = parseSubtitles(r.target.result); 
-                    alert(`Legenda carregada! ${subtitles.length} linhas encontradas.`);
-                };
-                reader.readAsText(e.target.files[0]);
+            const file = e.target.files[0];
+            if(file) {
+                // Cria URL local temporária
+                video.src = URL.createObjectURL(file);
+                // Tenta dar play automático (pode ser bloqueado pelo navegador)
+                // video.play().catch(() => {}); 
             }
         };
 
-        // --- 2. Parser Unificado (SRT e VTT) ---
-        // Essa função agora é inteligente e ignora as diferenças entre os formatos
+        // --- 2. CARREGAR LEGENDA (SRT ou VTT) ---
+        document.getElementById('subInput').onchange = e => {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = r => { 
+                    try {
+                        subtitles = parseSubtitles(r.target.result); 
+                        alert(`Legenda carregada com sucesso!\n${subtitles.length} linhas encontradas.`);
+                    } catch (err) {
+                        alert("Erro ao ler legenda. Verifique o arquivo.");
+                    }
+                };
+                reader.readAsText(file);
+            }
+        };
+
+        // --- 3. PARSER INTELIGENTE (Lê SRT e VTT) ---
         function parseSubtitles(text) {
-            // Normaliza quebras de linha (Windows/Linux)
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            
-            // Regex Explicada:
-            // 1. (Ignora índice numérico opcional)
-            // 2. Busca padrão Tempo --> Tempo (aceita ponto ou vírgula nos ms)
-            // 3. Captura o Texto até a próxima linha em branco
             const pattern = /(?:^|\n)(?:(\d+)\n)?(\d{2}:\d{2}:\d{2}[,.]\d{3})\s-->\s(\d{2}:\d{2}:\d{2}[,.]\d{3}).*?\n([\s\S]*?)(?=\n\n|$)/g;
             
             const result = [];
@@ -158,7 +167,7 @@
                 result.push({
                     start: timeToSec(match[2]),
                     end: timeToSec(match[3]),
-                    // Remove tags HTML (como <i> ou <b>) que são comuns em VTT
+                    // Remove HTML e limpa espaços
                     text: match[4].trim().replace(/\n/g, ' ').replace(/<[^>]*>/g, '') 
                 });
             }
@@ -166,53 +175,55 @@
         }
 
         function timeToSec(str) {
-            // Truque: substitui vírgula (SRT) por ponto (VTT/JS) para converter matemática
-            str = str.replace(',', '.');
+            str = str.replace(',', '.'); // Garante formato numérico JS
             const p = str.split(':');
-            // p[0]=horas, p[1]=minutos, p[2]=segundos.ms
             return (parseFloat(p[0]) * 3600) + (parseFloat(p[1]) * 60) + parseFloat(p[2]);
         }
 
-        // --- 3. Sincronia e Renderização ---
+        // --- 4. SINCRONIA VÍDEO <-> LEGENDA ---
         video.addEventListener('timeupdate', () => {
             const time = video.currentTime;
+            // Busca legenda correspondente ao tempo atual
             const idx = subtitles.findIndex(s => time >= s.start && time <= s.end);
             
             if (idx !== -1 && idx !== currentSubIndex) {
                 currentSubIndex = idx;
                 renderSubtitle(subtitles[idx].text);
-                transCard.style.display = 'none';
+                // Esconde tradução antiga ao mudar de frase
+                // transCard.style.display = 'none'; 
             } else if (idx === -1) {
                 subContent.innerHTML = '';
                 currentSubIndex = -1;
             }
         });
 
+        // Renderiza cada palavra em um <span> separado
         function renderSubtitle(text) {
             subContent.innerHTML = '';
             const words = text.split(' ');
             words.forEach((w, i) => {
                 const span = document.createElement('span');
-                span.textContent = w + ' ';
+                span.textContent = w + ' '; // Espaço visual
                 span.className = 'word';
                 span.dataset.index = i;
+                // Guarda versão limpa (sem pontuação) para API
                 span.dataset.raw = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g,"");
                 subContent.appendChild(span);
             });
         }
 
-        // --- 4. Lógica de Seleção por Toque (eJoy Style) ---
+        // --- 5. INTERATIVIDADE (TOUCH SELECTION) ---
         subContent.addEventListener('touchstart', (e) => {
             isSelecting = true;
             selectedWords.clear();
             transCard.style.display = 'none';
-            video.pause();
+            video.pause(); // Pausa o vídeo para facilitar seleção
             handleSelection(e.touches[0]);
         }, {passive: false});
 
         subContent.addEventListener('touchmove', (e) => {
             if (!isSelecting) return;
-            e.preventDefault();
+            e.preventDefault(); // Impede scroll da tela
             handleSelection(e.touches[0]);
         }, {passive: false});
 
@@ -224,6 +235,7 @@
         });
 
         function handleSelection(touch) {
+            // Detecta elemento sob o dedo
             const element = document.elementFromPoint(touch.clientX, touch.clientY);
             if (element && element.classList.contains('word')) {
                 element.classList.add('selected');
@@ -232,21 +244,26 @@
         }
 
         async function translateSelection() {
+            // Ordena palavras selecionadas pela ordem na frase
             const wordsArray = Array.from(selectedWords).sort((a, b) => a.dataset.index - b.dataset.index);
-            const phraseToTranslate = wordsArray.map(el => el.dataset.raw).join(' ');
-            const displayPhrase = wordsArray.map(el => el.textContent).join('');
+            
+            const phraseClean = wordsArray.map(el => el.dataset.raw).join(' ');
+            const phraseDisplay = wordsArray.map(el => el.textContent).join('');
 
+            // Mostra Modal
             transCard.style.display = 'block';
-            transOrig.textContent = displayPhrase;
+            transOrig.textContent = phraseDisplay;
             transRes.className = 'loading';
-            transRes.textContent = 'Traduzindo...';
+            transRes.textContent = 'Carregando...';
 
+            // Remove destaque amarelo após 1s
             setTimeout(() => {
                 document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
             }, 1000);
 
+            // API MyMemory
             try {
-                const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(phraseToTranslate)}&langpair=en|pt-BR`;
+                const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(phraseClean)}&langpair=en|pt-BR`;
                 const res = await fetch(url);
                 const data = await res.json();
                 
@@ -254,19 +271,20 @@
                     transRes.className = '';
                     transRes.textContent = data.responseData.translatedText;
                 } else {
-                    transRes.textContent = "Erro na tradução";
+                    transRes.textContent = "Não encontrado.";
                 }
             } catch (err) {
-                transRes.textContent = "Sem internet?";
+                transRes.textContent = "Erro de conexão.";
             }
         }
 
-        // --- 5. Gestos de Navegação (Swipe) ---
+        // --- 6. GESTOS DE NAVEGAÇÃO (SWIPE) ---
         const gestureZone = document.getElementById('video-wrapper');
         let touchStartX = 0;
         let touchEndX = 0;
 
         gestureZone.addEventListener('touchstart', e => {
+            // Ignora se tocar na legenda (para não conflitar com seleção)
             if(!e.target.closest('#subtitle-container')) {
                 touchStartX = e.changedTouches[0].screenX;
             }
@@ -281,22 +299,28 @@
 
         function handleGesture() {
             const diff = touchEndX - touchStartX;
-            if (Math.abs(diff) < 50) return;
+            if (Math.abs(diff) < 50) return; // Movimento curto demais = ignora
 
             if (diff < 0) {
+                // Swipe Esquerda (<--)
                 showFeedback('⏪');
-                jumpSubtitle(-1);
+                jumpSubtitle(-1); // Volta
             } else {
+                // Swipe Direita (-->)
                 showFeedback('⏩');
-                jumpSubtitle(1);
+                jumpSubtitle(1); // Avança
             }
         }
 
         function jumpSubtitle(direction) {
             if (subtitles.length === 0) return;
             let targetIndex = currentSubIndex + direction;
+            
+            // Limites do array
             if (targetIndex < 0) targetIndex = 0;
             if (targetIndex >= subtitles.length) targetIndex = subtitles.length - 1;
+            
+            // Pula vídeo para o tempo da legenda + micro ajuste
             video.currentTime = subtitles[targetIndex].start + 0.1;
             video.play();
         }
@@ -304,8 +328,20 @@
         function showFeedback(icon) {
             gestureIcon.textContent = icon;
             gestureIcon.style.opacity = 1;
-            setTimeout(() => gestureIcon.style.opacity = 0, 500);
+            setTimeout(() => gestureIcon.style.opacity = 0, 600);
         }
+
+        // --- 7. DIAGNÓSTICO DE ERROS (Importante para iPhone) ---
+        video.onerror = function() {
+            let msg = "Erro desconhecido.";
+            if (video.error) {
+                switch (video.error.code) {
+                    case 3: msg = "Erro de decodificação."; break;
+                    case 4: msg = "FORMATO NÃO SUPORTADO!\nO iPhone só roda vídeos MP4 (H.264).\nSe o seu arquivo é .MKV ou .AVI, converta para .MP4 antes."; break;
+                }
+            }
+            alert("⚠️ " + msg);
+        };
     </script>
 </body>
 </html>

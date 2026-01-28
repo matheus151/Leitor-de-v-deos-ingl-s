@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V8.0)</title>
+    <title>Player Estudo Pro (V9.0)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -36,7 +36,6 @@
             flex-grow: 1; text-align: center; font-weight: 600; font-size: 0.85rem;
         }
         
-        /* Botão Limpar */
         .btn-clear {
             background: #c0392b; color: #fff; border: none; padding: 10px;
             border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%;
@@ -72,7 +71,22 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: none; align-items: center; justify-content: center; z-index: 1;
         }
-        iframe { width: 100%; height: 100%; border: none; }
+        iframe { width: 100%; height: 100%; border: none; pointer-events: none; /* Deixa o clique passar para a camada de gesto */ }
+
+        /* --- CAMADA DE GESTOS (NOVIDADE V9) --- */
+        /* Essa camada fica invisível por cima do vídeo para capturar o dedo */
+        #gesture-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; /* Acima do vídeo (z=1), abaixo da legenda (z=20) */
+            /* background: rgba(255,0,0,0.1);  Debug: use para ver a área */
+        }
+        
+        /* Botão para destravar o YouTube (caso queira mudar qualidade) */
+        #unlock-yt-btn {
+            position: absolute; top: 10px; right: 10px; z-index: 60;
+            background: rgba(0,0,0,0.6); color: #fff; border: 1px solid #555;
+            padding: 5px 10px; border-radius: 4px; font-size: 0.7rem; display: none; cursor: pointer;
+        }
 
         /* --- LEGENDAS --- */
         #subtitle-container {
@@ -170,7 +184,13 @@
 
     <div id="video-wrapper">
         <video id="mainVideo" controls playsinline></video>
-        <div id="yt-container"><div id="yt-player"></div></div>
+        
+        <div id="yt-container">
+            <div id="yt-player"></div>
+        </div>
+        
+        <div id="gesture-layer"></div>
+        <button id="unlock-yt-btn" onclick="toggleYtControls()">⚙️ Controles YouTube</button>
 
         <div id="gesture-feedback">⏪</div>
         
@@ -194,6 +214,8 @@
         // --- VARIÁVEIS ---
         const video = document.getElementById('mainVideo');
         const ytContainer = document.getElementById('yt-container');
+        const gestureLayer = document.getElementById('gesture-layer');
+        const unlockBtn = document.getElementById('unlock-yt-btn');
         const ytInput = document.getElementById('yt-url');
         const subContent = document.getElementById('subtitle-content');
         const subBox = document.getElementById('subtitle-box');
@@ -216,47 +238,42 @@
         let playerType = 'local';
         let ytPlayer = null;
         let ytTimer = null;
+        let ytControlsLocked = true; // Controla se o toque vai pro app ou pro youtube
         
         let isDragging = false;
         let dragStartX = 0; let dragStartY = 0;
         let initialTop = 0; let initialLeft = 0;
 
-        // --- 1. FUNÇÃO RESET (NOVA) ---
+        // --- 1. FUNÇÃO RESET ---
         function resetApp() {
-            // Limpa memória
             localStorage.removeItem('ejoy_subs');
             localStorage.removeItem('ejoy_vidName');
             localStorage.removeItem('ejoy_time');
             localStorage.removeItem('ejoy_ytUrl');
             localStorage.removeItem('ejoy_mode');
 
-            // Limpa Variáveis
             subtitles = [];
             lastRenderedText = "";
             subContent.innerHTML = "";
             resumeStatus.style.display = 'none';
             resumeStatus.innerText = "";
 
-            // Para players
             if(playerType === 'local') {
-                video.pause();
-                video.src = "";
-                video.load();
+                video.pause(); video.src = ""; video.load();
             } else if(playerType === 'youtube' && ytPlayer) {
                 ytPlayer.stopVideo();
                 ytContainer.style.display = 'none';
-                video.style.display = 'block'; // Volta para tela padrão
+                video.style.display = 'block';
+                unlockBtn.style.display = 'none';
+                gestureLayer.style.display = 'block'; // Garante que volta ao normal
             }
-
-            // Reseta inputs
             document.getElementById('videoInput').value = "";
             document.getElementById('subInput').value = "";
             document.getElementById('yt-url').value = "";
-
-            alert("Vídeo fechado e legendas removidas!");
+            alert("Limpo!");
         }
 
-        // --- 2. YOUTUBE ---
+        // --- 2. YOUTUBE COM GESTOS ---
         function onYouTubeIframeAPIReady() {}
 
         function loadYouTube() {
@@ -264,14 +281,15 @@
             const videoId = extractVideoID(url);
             if(!videoId) { alert("Link inválido"); return; }
             
-            // Auto-limpeza ao trocar
-            subtitles = [];
-            subContent.innerHTML = "";
-            
+            subtitles = []; subContent.innerHTML = "";
             playerType = 'youtube';
-            video.style.display = 'none';
-            video.pause();
+            video.style.display = 'none'; video.pause();
             ytContainer.style.display = 'flex';
+            
+            // Ativa camada de gestos e botão de destravar
+            gestureLayer.style.display = 'block';
+            unlockBtn.style.display = 'block';
+            ytControlsLocked = true;
 
             localStorage.setItem('ejoy_ytUrl', url);
             localStorage.setItem('ejoy_mode', 'youtube');
@@ -281,11 +299,29 @@
             } else {
                 ytPlayer = new YT.Player('yt-player', {
                     height: '100%', width: '100%', videoId: videoId,
-                    playerVars: { 'playsinline': 1 },
+                    playerVars: { 'playsinline': 1, 'controls': 0, 'rel': 0 }, // Tenta esconder controles nativos
                 });
             }
             startYTSync();
-            alert("Vídeo carregado! Agora carregue a legenda.");
+            alert("Vídeo carregado!\n\nUse os gestos na tela para Play/Pause e Avançar/Voltar.");
+        }
+
+        // Alterna entre "Modo Gesto" e "Modo Controle Nativo"
+        function toggleYtControls() {
+            const iframe = document.querySelector('iframe');
+            if(ytControlsLocked) {
+                // Destrava: Esconde camada de gesto, permite toque no iframe
+                gestureLayer.style.display = 'none';
+                iframe.style.pointerEvents = 'auto';
+                unlockBtn.innerText = "🔒 Ativar Gestos";
+                ytControlsLocked = false;
+            } else {
+                // Trava: Mostra camada de gesto, bloqueia iframe
+                gestureLayer.style.display = 'block';
+                iframe.style.pointerEvents = 'none';
+                unlockBtn.innerText = "⚙️ Controles YouTube";
+                ytControlsLocked = true;
+            }
         }
 
         function extractVideoID(url) {
@@ -305,7 +341,7 @@
             }, 100);
         }
 
-        // --- 3. PERSISTÊNCIA ---
+        // --- 3. PERSISTÊNCIA & LOCAL ---
         window.onload = () => {
             const savedSubs = localStorage.getItem('ejoy_subs');
             if (savedSubs) {
@@ -315,30 +351,26 @@
                     resumeStatus.innerText = `✅ Legenda carregada`;
                 } catch(e) {}
             }
-            // (Resto do código de persistência mantido, simplificado para brevidade)
             const lastMode = localStorage.getItem('ejoy_mode');
             const lastTime = localStorage.getItem('ejoy_time');
             if(lastMode === 'youtube') {
                 ytInput.value = localStorage.getItem('ejoy_ytUrl') || "";
+                // Não auto-carrega para evitar confusão, apenas preenche
             } else {
-                 if(localStorage.getItem('ejoy_vidName') && lastTime) {
+                if(localStorage.getItem('ejoy_vidName') && lastTime) {
                      resumeStatus.innerText += " | ⏳ Vídeo anterior salvo";
-                 }
+                }
             }
         };
 
-        // --- 4. UPLOADS ---
         document.getElementById('videoInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
-                // Limpeza ao carregar novo vídeo
-                subtitles = []; 
-                subContent.innerHTML = "";
-                
+                resetApp(); // Limpa estado anterior limpo
                 playerType = 'local';
                 ytContainer.style.display = 'none';
-                if(ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
-                if(ytTimer) clearInterval(ytTimer);
+                gestureLayer.style.display = 'none'; // Vídeo local tem controles nativos bons
+                unlockBtn.style.display = 'none';
                 
                 video.style.display = 'block';
                 video.src = URL.createObjectURL(file);
@@ -346,14 +378,7 @@
                 localStorage.setItem('ejoy_mode', 'local');
             }
         };
-
-        video.addEventListener('timeupdate', () => {
-            if(playerType === 'local') {
-                localStorage.setItem('ejoy_time', video.currentTime);
-                renderLogic(video.currentTime);
-            }
-        });
-
+        
         document.getElementById('subInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
@@ -367,16 +392,14 @@
                             alert(`Legenda carregada! (${subtitles.length} linhas)`);
                             resumeStatus.style.display = 'block';
                             resumeStatus.innerText = "✅ Legenda Ativa";
-                        } else {
-                            alert("Arquivo vazio ou inválido.");
-                        }
+                        } else { alert("Arquivo vazio."); }
                     } catch(e) { alert("Erro ao ler."); }
                 };
                 reader.readAsText(file);
             }
         };
 
-        // --- 5. PARSER & RENDER ---
+        // --- 4. PARSER ---
         function parseSubtitles(text) {
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             const pattern = /(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s-->\s(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})[^\n]*\n([\s\S]*?)(?=\n\n|$)/g;
@@ -391,45 +414,36 @@
             }
             return result;
         }
-
         function timeToSec(str) {
             str = str.replace(',', '.');
             const p = str.split(':');
             return (parseFloat(p[0]) * 3600) + (parseFloat(p[1]) * 60) + parseFloat(p[2]);
         }
-
         function renderLogic(time) {
             const sub = subtitles.find(s => time >= s.start && time <= s.end);
             if (sub) {
                 if (sub.text !== lastRenderedText) {
-                    renderSubtitle(sub.text);
-                    lastRenderedText = sub.text;
+                    renderSubtitle(sub.text); lastRenderedText = sub.text;
                 }
-            } else {
-                subContent.innerHTML = '';
-                lastRenderedText = "";
-            }
+            } else { subContent.innerHTML = ''; lastRenderedText = ""; }
         }
-
         function renderSubtitle(text) {
             subContent.innerHTML = '';
             const words = text.split(' ');
             words.forEach((w, i) => {
                 const span = document.createElement('span');
-                span.textContent = w + ' ';
-                span.className = 'word';
-                span.dataset.index = i;
+                span.textContent = w + ' '; span.className = 'word'; span.dataset.index = i;
                 span.dataset.raw = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g,"");
                 subContent.appendChild(span);
             });
             const btn = document.createElement('span');
-            btn.className = 'translate-btn';
-            btn.innerHTML = '🌐';
+            btn.className = 'translate-btn'; btn.innerHTML = '🌐';
             btn.addEventListener('touchstart', (e) => e.stopPropagation());
             btn.onclick = (e) => { e.stopPropagation(); pauseAnyPlayer(); translateText(text, text); };
             subContent.appendChild(btn);
         }
 
+        // --- 5. PLAYER CONTROL ---
         function pauseAnyPlayer() {
             if(playerType === 'local') video.pause();
             if(playerType === 'youtube' && ytPlayer) ytPlayer.pauseVideo();
@@ -437,6 +451,13 @@
         function playAnyPlayer() {
             if(playerType === 'local') video.play();
             if(playerType === 'youtube' && ytPlayer) ytPlayer.playVideo();
+        }
+        function togglePlayAny() {
+            if(playerType === 'local') video.paused ? video.play() : video.pause();
+            if(playerType === 'youtube' && ytPlayer) {
+                const state = ytPlayer.getPlayerState();
+                (state === 1) ? ytPlayer.pauseVideo() : ytPlayer.playVideo();
+            }
         }
         function setTimeAnyPlayer(time) {
              if(playerType === 'local') video.currentTime = time;
@@ -448,7 +469,7 @@
             return 0;
         }
 
-        // --- 6. DRAG & STYLE ---
+        // --- 6. DRAG & TOUCH SELECTION ---
         dragHandle.addEventListener('touchstart', dragStart, {passive: false});
         dragHandle.addEventListener('touchmove', dragMove, {passive: false});
         dragHandle.addEventListener('touchend', dragEnd);
@@ -477,22 +498,17 @@
             subBox.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.7)`;
         });
 
-        // --- 7. TOQUE ---
         subContent.addEventListener('touchstart', (e) => {
             if(e.target.classList.contains('translate-btn')) return;
             isSelecting = true; selectedWords.clear(); transCard.style.display = 'none';
-            pauseAnyPlayer();
-            handleSelection(e.touches[0]);
+            pauseAnyPlayer(); handleSelection(e.touches[0]);
         }, {passive: false});
-
         subContent.addEventListener('touchmove', (e) => {
             if (!isSelecting) return; e.preventDefault(); handleSelection(e.touches[0]);
         }, {passive: false});
-
         subContent.addEventListener('touchend', () => {
             isSelecting = false; if (selectedWords.size > 0) translateSelection();
         });
-
         function handleSelection(touch) {
             const el = document.elementFromPoint(touch.clientX, touch.clientY);
             if (el && el.classList.contains('word')) {
@@ -502,8 +518,7 @@
         function translateSelection() {
             const arr = Array.from(selectedWords).sort((a,b) => a.dataset.index - b.dataset.index);
             const txt = arr.map(el => el.dataset.raw).join(' ');
-            const disp = arr.map(el => el.textContent).join('');
-            translateText(txt, disp);
+            translateText(txt, arr.map(el => el.textContent).join(''));
             setTimeout(() => document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected')), 1000);
         }
         async function translateText(src, dsp) {
@@ -516,79 +531,73 @@
             } catch (e) { transRes.textContent = "Erro"; }
         }
 
-        // --- 8. GESTOS CORRIGIDOS (Fix Swipe) ---
-        const gestureZone = document.getElementById('video-wrapper');
-        let tStartX = 0; let tEndX = 0;
+        // --- 7. GESTOS UNIFICADOS (NOVIDADE: LAYER & FALLBACK) ---
+        // A camada #gesture-layer cobre o YouTube. 
+        // O #video-wrapper cobre o Local (mas local tem controles nativos que ficam acima).
+        
+        const gestureZone = document.getElementById('gesture-layer'); // Para YT
+        const gestureZoneLocal = document.getElementById('video-wrapper'); // Para Local (se tocar fora dos controles)
 
-        gestureZone.addEventListener('touchstart', e => {
-            if(!e.target.closest('#subtitle-container')) tStartX = e.changedTouches[0].screenX;
-        }, {passive: false});
+        function attachGestures(element) {
+            let tStart = 0; let tEnd = 0; let tStartTime = 0;
+            
+            element.addEventListener('touchstart', e => {
+                // Se tocar na legenda ou controles, ignora
+                if(e.target.closest('#subtitle-container') || e.target.closest('.translate-btn')) return;
+                tStart = e.changedTouches[0].screenX;
+                tStartTime = new Date().getTime();
+            }, {passive: false});
 
-        gestureZone.addEventListener('touchend', e => {
-            if(!e.target.closest('#subtitle-container')) {
-                tEndX = e.changedTouches[0].screenX;
-                handleGesture();
-            }
-        }, {passive: false});
-
-        function handleGesture() {
-            const diff = tEndX - tStartX;
-            if (Math.abs(diff) < 50) return;
-            if (diff < 0) { showFeedback('⏪'); jumpSubtitle(-1); } 
-            else { showFeedback('⏩'); jumpSubtitle(1); }
+            element.addEventListener('touchend', e => {
+                if(e.target.closest('#subtitle-container')) return;
+                tEnd = e.changedTouches[0].screenX;
+                const duration = new Date().getTime() - tStartTime;
+                const diff = tEnd - tStart;
+                
+                // Se foi rápido e curto = Click (Play/Pause)
+                if (duration < 200 && Math.abs(diff) < 10) {
+                    togglePlayAny();
+                } 
+                // Se foi longo = Swipe
+                else if (Math.abs(diff) > 50) {
+                    if (diff < 0) { showFeedback('⏪'); jumpSubtitle(-1); } 
+                    else { showFeedback('⏩'); jumpSubtitle(1); }
+                }
+            }, {passive: false});
         }
+        
+        attachGestures(gestureZone);      // Gestos no YouTube
+        attachGestures(gestureZoneLocal); // Gestos no Local (fundo)
 
         function jumpSubtitle(dir) {
-            if (subtitles.length === 0) return;
-            const now = getCurrentTimeAny();
-            
-            // 1. Encontrar o índice da legenda ATUAL (ou a última que passou)
-            // Usamos findIndex de uma maneira que funcione para "ir para a próxima"
-            // Se estamos no meio de uma legenda, currIdx é ela.
-            // Se estamos no silêncio, precisamos achar a próxima.
-            
-            let nextStartIdx = subtitles.findIndex(s => s.start > now);
-            
-            // Se não achou nenhuma futura, estamos no fim.
-            if (nextStartIdx === -1) nextStartIdx = subtitles.length;
+            // MODO 1: Se tem legenda, usa lógica de linhas
+            if (subtitles.length > 0) {
+                const now = getCurrentTimeAny();
+                let nextStartIdx = subtitles.findIndex(s => s.start > now);
+                if (nextStartIdx === -1) nextStartIdx = subtitles.length;
 
-            // Se a direção é PROXIMA (1), o alvo é nextStartIdx.
-            // Se a direção é ANTERIOR (-1):
-            // - Se estamos ouvindo uma legenda agora (now > start), nextStartIdx é a que VEM DEPOIS. 
-            //   Então a atual é nextStartIdx - 1. E a anterior é nextStartIdx - 2.
-            
-            let targetIdx;
-
-            if (dir === 1) {
-                targetIdx = nextStartIdx;
-            } else {
-                // Voltar
-                // Se estamos exatamente no inicio de uma, queremos a anterior.
-                // Se estamos no meio de uma, queremos o inicio dela (ou a anterior, comportamento varia).
-                // Vamos assumir comportamento padrão: Voltar = Ir para o início da atual ou da anterior.
-                
-                // Pega a legenda atual (ou a anterior mais próxima)
-                let currentOrPrevIdx = nextStartIdx - 1;
-                
-                // Se estamos "dentro" da currentOrPrev, voltar significa ir para o inicio dela? 
-                // Ou para a anterior a ela? Normalmente apps de player voltam para o inicio da atual se passou pouco tempo,
-                // ou para a anterior. Vamos simplificar: Sempre volta para a anterior absoluta da posição atual.
-                targetIdx = currentOrPrevIdx;
-                
-                // Se já estamos muito perto do começo dela (< 1s), pula pra anterior de verdade
-                if (targetIdx >= 0 && (now - subtitles[targetIdx].start) < 1.0) {
-                    targetIdx--;
+                let targetIdx;
+                if (dir === 1) {
+                    targetIdx = nextStartIdx;
+                } else {
+                    let currentOrPrevIdx = nextStartIdx - 1;
+                    targetIdx = currentOrPrevIdx;
+                    if (targetIdx >= 0 && (now - subtitles[targetIdx].start) < 1.0) {
+                        targetIdx--;
+                    }
                 }
+                if (targetIdx < 0) targetIdx = 0;
+                if (targetIdx >= subtitles.length) targetIdx = subtitles.length - 1;
+                
+                setTimeAnyPlayer(subtitles[targetIdx].start + 0.1);
+            } 
+            // MODO 2: Se NÃO tem legenda, busca +/- 10s (FALLBACK)
+            else {
+                const now = getCurrentTimeAny();
+                const jump = dir * 10; // 10 segundos
+                setTimeAnyPlayer(now + jump);
+                showFeedback(dir > 0 ? '+10s' : '-10s');
             }
-
-            // Segurança
-            if (targetIdx < 0) targetIdx = 0;
-            if (targetIdx >= subtitles.length) targetIdx = subtitles.length - 1;
-            
-            // Pular
-            // Adiciona 0.1s para garantir que entre na faixa de tempo
-            const tgtTime = subtitles[targetIdx].start + 0.1;
-            setTimeAnyPlayer(tgtTime);
             playAnyPlayer();
         }
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V9.0)</title>
+    <title>Player Estudo Pro (V9.1)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -71,17 +71,14 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: none; align-items: center; justify-content: center; z-index: 1;
         }
-        iframe { width: 100%; height: 100%; border: none; pointer-events: none; /* Deixa o clique passar para a camada de gesto */ }
+        iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
 
-        /* --- CAMADA DE GESTOS (NOVIDADE V9) --- */
-        /* Essa camada fica invisível por cima do vídeo para capturar o dedo */
+        /* --- CAMADA DE GESTOS --- */
         #gesture-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; /* Acima do vídeo (z=1), abaixo da legenda (z=20) */
-            /* background: rgba(255,0,0,0.1);  Debug: use para ver a área */
+            z-index: 10; 
         }
         
-        /* Botão para destravar o YouTube (caso queira mudar qualidade) */
         #unlock-yt-btn {
             position: absolute; top: 10px; right: 10px; z-index: 60;
             background: rgba(0,0,0,0.6); color: #fff; border: 1px solid #555;
@@ -130,7 +127,8 @@
         .translate-btn {
             display: inline-flex; align-items: center; justify-content: center;
             background: #fff; color: #000; border-radius: 50%;
-            width: 24px; height: 24px; margin-left: 8px; font-size: 14px; 
+            width: 30px; height: 30px; margin-left: 8px; font-size: 16px; 
+            cursor: pointer;
         }
 
         #translation-card {
@@ -238,7 +236,7 @@
         let playerType = 'local';
         let ytPlayer = null;
         let ytTimer = null;
-        let ytControlsLocked = true; // Controla se o toque vai pro app ou pro youtube
+        let ytControlsLocked = true;
         
         let isDragging = false;
         let dragStartX = 0; let dragStartY = 0;
@@ -265,7 +263,7 @@
                 ytContainer.style.display = 'none';
                 video.style.display = 'block';
                 unlockBtn.style.display = 'none';
-                gestureLayer.style.display = 'block'; // Garante que volta ao normal
+                gestureLayer.style.display = 'block';
             }
             document.getElementById('videoInput').value = "";
             document.getElementById('subInput').value = "";
@@ -273,7 +271,7 @@
             alert("Limpo!");
         }
 
-        // --- 2. YOUTUBE COM GESTOS ---
+        // --- 2. YOUTUBE ---
         function onYouTubeIframeAPIReady() {}
 
         function loadYouTube() {
@@ -286,7 +284,6 @@
             video.style.display = 'none'; video.pause();
             ytContainer.style.display = 'flex';
             
-            // Ativa camada de gestos e botão de destravar
             gestureLayer.style.display = 'block';
             unlockBtn.style.display = 'block';
             ytControlsLocked = true;
@@ -299,24 +296,24 @@
             } else {
                 ytPlayer = new YT.Player('yt-player', {
                     height: '100%', width: '100%', videoId: videoId,
-                    playerVars: { 'playsinline': 1, 'controls': 0, 'rel': 0 }, // Tenta esconder controles nativos
+                    // CORREÇÃO: ativamos controls: 1 para quando destravarmos, eles aparecerem
+                    playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, 
                 });
             }
             startYTSync();
             alert("Vídeo carregado!\n\nUse os gestos na tela para Play/Pause e Avançar/Voltar.");
         }
 
-        // Alterna entre "Modo Gesto" e "Modo Controle Nativo"
         function toggleYtControls() {
             const iframe = document.querySelector('iframe');
             if(ytControlsLocked) {
-                // Destrava: Esconde camada de gesto, permite toque no iframe
+                // Destrava: Tira a camada de gesto, libera o iframe
                 gestureLayer.style.display = 'none';
                 iframe.style.pointerEvents = 'auto';
                 unlockBtn.innerText = "🔒 Ativar Gestos";
                 ytControlsLocked = false;
             } else {
-                // Trava: Mostra camada de gesto, bloqueia iframe
+                // Trava: Põe a camada de gesto, bloqueia o iframe
                 gestureLayer.style.display = 'block';
                 iframe.style.pointerEvents = 'none';
                 unlockBtn.innerText = "⚙️ Controles YouTube";
@@ -355,7 +352,6 @@
             const lastTime = localStorage.getItem('ejoy_time');
             if(lastMode === 'youtube') {
                 ytInput.value = localStorage.getItem('ejoy_ytUrl') || "";
-                // Não auto-carrega para evitar confusão, apenas preenche
             } else {
                 if(localStorage.getItem('ejoy_vidName') && lastTime) {
                      resumeStatus.innerText += " | ⏳ Vídeo anterior salvo";
@@ -366,12 +362,11 @@
         document.getElementById('videoInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
-                resetApp(); // Limpa estado anterior limpo
+                resetApp(); 
                 playerType = 'local';
                 ytContainer.style.display = 'none';
-                gestureLayer.style.display = 'none'; // Vídeo local tem controles nativos bons
+                gestureLayer.style.display = 'none'; 
                 unlockBtn.style.display = 'none';
-                
                 video.style.display = 'block';
                 video.src = URL.createObjectURL(file);
                 localStorage.setItem('ejoy_vidName', file.name);
@@ -438,7 +433,21 @@
             });
             const btn = document.createElement('span');
             btn.className = 'translate-btn'; btn.innerHTML = '🌐';
-            btn.addEventListener('touchstart', (e) => e.stopPropagation());
+            
+            // CORREÇÃO: Prioridade máxima para o toque no botão
+            btn.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                e.preventDefault(); // Impede clique fantasma
+                pauseAnyPlayer();
+                // Limpa seleções anteriores para não traduzir o dedo passado
+                isSelecting = false;
+                selectedWords.clear();
+                document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
+                // Traduz tudo
+                translateText(text, text);
+            });
+            
+            // Fallback para clique (Desktop)
             btn.onclick = (e) => { e.stopPropagation(); pauseAnyPlayer(); translateText(text, text); };
             subContent.appendChild(btn);
         }
@@ -531,18 +540,14 @@
             } catch (e) { transRes.textContent = "Erro"; }
         }
 
-        // --- 7. GESTOS UNIFICADOS (NOVIDADE: LAYER & FALLBACK) ---
-        // A camada #gesture-layer cobre o YouTube. 
-        // O #video-wrapper cobre o Local (mas local tem controles nativos que ficam acima).
-        
-        const gestureZone = document.getElementById('gesture-layer'); // Para YT
-        const gestureZoneLocal = document.getElementById('video-wrapper'); // Para Local (se tocar fora dos controles)
+        // --- 7. GESTOS UNIFICADOS ---
+        const gestureZone = document.getElementById('gesture-layer'); 
+        const gestureZoneLocal = document.getElementById('video-wrapper');
 
         function attachGestures(element) {
             let tStart = 0; let tEnd = 0; let tStartTime = 0;
             
             element.addEventListener('touchstart', e => {
-                // Se tocar na legenda ou controles, ignora
                 if(e.target.closest('#subtitle-container') || e.target.closest('.translate-btn')) return;
                 tStart = e.changedTouches[0].screenX;
                 tStartTime = new Date().getTime();
@@ -554,23 +559,19 @@
                 const duration = new Date().getTime() - tStartTime;
                 const diff = tEnd - tStart;
                 
-                // Se foi rápido e curto = Click (Play/Pause)
                 if (duration < 200 && Math.abs(diff) < 10) {
                     togglePlayAny();
                 } 
-                // Se foi longo = Swipe
                 else if (Math.abs(diff) > 50) {
                     if (diff < 0) { showFeedback('⏪'); jumpSubtitle(-1); } 
                     else { showFeedback('⏩'); jumpSubtitle(1); }
                 }
             }, {passive: false});
         }
-        
-        attachGestures(gestureZone);      // Gestos no YouTube
-        attachGestures(gestureZoneLocal); // Gestos no Local (fundo)
+        attachGestures(gestureZone);      
+        attachGestures(gestureZoneLocal); 
 
         function jumpSubtitle(dir) {
-            // MODO 1: Se tem legenda, usa lógica de linhas
             if (subtitles.length > 0) {
                 const now = getCurrentTimeAny();
                 let nextStartIdx = subtitles.findIndex(s => s.start > now);
@@ -591,10 +592,9 @@
                 
                 setTimeAnyPlayer(subtitles[targetIdx].start + 0.1);
             } 
-            // MODO 2: Se NÃO tem legenda, busca +/- 10s (FALLBACK)
             else {
                 const now = getCurrentTimeAny();
-                const jump = dir * 10; // 10 segundos
+                const jump = dir * 10;
                 setTimeAnyPlayer(now + jump);
                 showFeedback(dir > 0 ? '+10s' : '-10s');
             }

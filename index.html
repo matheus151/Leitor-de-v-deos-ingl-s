@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V9.1)</title>
+    <title>Player Estudo Pro (V10.0)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -100,16 +100,21 @@
             padding: 0 12px 8px 12px;
             border-radius: 12px;
             pointer-events: auto; 
-            user-select: none; -webkit-user-select: none; touch-action: none;
+            user-select: none; -webkit-user-select: none; 
+            touch-action: none; /* MELHORIA DRAG: Impede conflito com scroll */
             line-height: 1.4; text-align: center;
-            transition: background-color 0.3s, color 0.3s;
+            /* Removemos transition de posição para o Drag ser instantâneo */
+            transition: background-color 0.3s, color 0.3s; 
             position: relative;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
+        /* MELHORIA DRAG: Barra maior e mais fácil de pegar */
         #drag-handle {
-            width: 40px; height: 5px; background-color: rgba(255,255,255,0.3);
-            margin: 6px auto; border-radius: 10px; cursor: move;
+            width: 80px; height: 12px; 
+            background-color: rgba(255,255,255,0.25);
+            margin: 4px auto 8px auto; 
+            border-radius: 10px; cursor: move;
         }
         
         @media (orientation: landscape) {
@@ -296,7 +301,6 @@
             } else {
                 ytPlayer = new YT.Player('yt-player', {
                     height: '100%', width: '100%', videoId: videoId,
-                    // CORREÇÃO: ativamos controls: 1 para quando destravarmos, eles aparecerem
                     playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, 
                 });
             }
@@ -307,13 +311,11 @@
         function toggleYtControls() {
             const iframe = document.querySelector('iframe');
             if(ytControlsLocked) {
-                // Destrava: Tira a camada de gesto, libera o iframe
                 gestureLayer.style.display = 'none';
                 iframe.style.pointerEvents = 'auto';
                 unlockBtn.innerText = "🔒 Ativar Gestos";
                 ytControlsLocked = false;
             } else {
-                // Trava: Põe a camada de gesto, bloqueia o iframe
                 gestureLayer.style.display = 'block';
                 iframe.style.pointerEvents = 'none';
                 unlockBtn.innerText = "⚙️ Controles YouTube";
@@ -434,20 +436,16 @@
             const btn = document.createElement('span');
             btn.className = 'translate-btn'; btn.innerHTML = '🌐';
             
-            // CORREÇÃO: Prioridade máxima para o toque no botão
             btn.addEventListener('touchstart', (e) => {
                 e.stopPropagation();
-                e.preventDefault(); // Impede clique fantasma
+                e.preventDefault();
                 pauseAnyPlayer();
-                // Limpa seleções anteriores para não traduzir o dedo passado
                 isSelecting = false;
                 selectedWords.clear();
                 document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
-                // Traduz tudo
                 translateText(text, text);
             });
             
-            // Fallback para clique (Desktop)
             btn.onclick = (e) => { e.stopPropagation(); pauseAnyPlayer(); translateText(text, text); };
             subContent.appendChild(btn);
         }
@@ -479,6 +477,7 @@
         }
 
         // --- 6. DRAG & TOUCH SELECTION ---
+        // MELHORIA DRAG: Lógica mais suave
         dragHandle.addEventListener('touchstart', dragStart, {passive: false});
         dragHandle.addEventListener('touchmove', dragMove, {passive: false});
         dragHandle.addEventListener('touchend', dragEnd);
@@ -488,11 +487,15 @@
             dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
             const rect = subContainer.getBoundingClientRect();
             initialTop = rect.top; initialLeft = rect.left;
-            subContainer.style.bottom = 'auto'; subContainer.style.transform = 'none';
-            subContainer.style.top = initialTop + 'px'; subContainer.style.left = initialLeft + 'px';
+            // Trava o container em Absolute na posição atual
+            subContainer.style.bottom = 'auto'; 
+            subContainer.style.transform = 'none';
+            subContainer.style.top = initialTop + 'px'; 
+            subContainer.style.left = initialLeft + 'px';
         }
         function dragMove(e) {
-            if (!isDragging) return; e.preventDefault();
+            if (!isDragging) return; 
+            e.preventDefault(); // Garante que não scrola
             const dx = e.touches[0].clientX - dragStartX;
             const dy = e.touches[0].clientY - dragStartY;
             subContainer.style.top = (initialTop + dy) + 'px';
@@ -562,7 +565,8 @@
                 if (duration < 200 && Math.abs(diff) < 10) {
                     togglePlayAny();
                 } 
-                else if (Math.abs(diff) > 50) {
+                // MELHORIA SWIPE: Threshold reduzido para 30px (mais sensível/rápido)
+                else if (Math.abs(diff) > 30) {
                     if (diff < 0) { showFeedback('⏪'); jumpSubtitle(-1); } 
                     else { showFeedback('⏩'); jumpSubtitle(1); }
                 }
@@ -590,7 +594,11 @@
                 if (targetIdx < 0) targetIdx = 0;
                 if (targetIdx >= subtitles.length) targetIdx = subtitles.length - 1;
                 
-                setTimeAnyPlayer(subtitles[targetIdx].start + 0.1);
+                // MELHORIA TIMING: Subtrai 0.2s para garantir que pega o início do áudio
+                let safeTime = subtitles[targetIdx].start - 0.2;
+                if (safeTime < 0) safeTime = 0;
+                
+                setTimeAnyPlayer(safeTime);
             } 
             else {
                 const now = getCurrentTimeAny();

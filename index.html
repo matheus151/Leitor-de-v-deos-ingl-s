@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V12.0 - Infinite Scroll)</title>
+    <title>Player Estudo Pro (V13.0 - Full UI Control)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -13,15 +13,33 @@
             display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
 
-        /* --- CONTROLES --- */
+        /* --- CONTROLES SUPERIORES --- */
         #controls-wrapper {
-            background: #1a1a1a; border-bottom: 1px solid #333; z-index: 50; padding: 8px;
+            background: #1a1a1a; 
+            z-index: 50; padding: 8px;
             transition: opacity 0.3s;
-            max-height: 80vh; /* Permite crescer mais para a busca */
+            max-height: 80vh; 
             overflow-y: auto;
-            flex-shrink: 0; /* Impede que encolha demais */
+            flex-shrink: 0;
+            border-bottom: 1px solid #333;
         }
         
+        /* BARRA DE OCULTAR (NOVIDADE V13) */
+        #ui-toggle-bar {
+            background: #111;
+            color: #666;
+            text-align: center;
+            padding: 4px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+            z-index: 51;
+            font-size: 1rem;
+            line-height: 1;
+            user-select: none;
+            flex-shrink: 0; /* Garante que a barra nunca suma */
+        }
+        #ui-toggle-bar:hover { background: #222; color: #fff; }
+
         /* Área de Busca */
         .yt-search-group { display: flex; gap: 5px; margin-bottom: 8px; }
         .yt-input {
@@ -34,37 +52,28 @@
         }
         .search-trigger-btn { background: #00a8ff; } 
 
-        /* CONTAINER DE RESULTADOS (Melhorado V12) */
+        /* Resultados da Busca */
         #search-results-container {
-            display: none; /* Escondido por padrão */
-            background: #222; border: 1px solid #444; border-radius: 8px; 
+            display: none; background: #222; border: 1px solid #444; border-radius: 8px; 
             margin-bottom: 10px; overflow: hidden;
         }
-        
-        /* Cabeçalho com a Setinha */
         #results-header {
             background: #333; padding: 8px 12px; font-size: 0.85rem; font-weight: bold;
             display: flex; justify-content: space-between; align-items: center;
             cursor: pointer; border-bottom: 1px solid #444;
         }
-        #results-header:hover { background: #444; }
         .toggle-arrow { font-size: 1.2rem; transform: rotate(0deg); transition: transform 0.3s; }
         .toggle-arrow.collapsed { transform: rotate(180deg); }
 
-        /* Lista de Vídeos (Scroll Infinito) */
         #search-results-list {
             display: flex; flex-direction: column; gap: 10px; padding: 10px;
-            /* AUMENTADO: Ocupa até 50% da tela para ver bem os vídeos */
-            max-height: 50vh; 
-            overflow-y: auto; 
-            transition: max-height 0.3s ease;
+            max-height: 50vh; overflow-y: auto; transition: max-height 0.3s ease;
         }
         #search-results-list.hidden { max-height: 0; padding: 0; border: none; }
 
         .video-item {
             display: flex; gap: 10px; padding: 8px; background: #2a2a2a; 
-            border-radius: 6px; cursor: pointer; align-items: center;
-            border: 1px solid transparent;
+            border-radius: 6px; cursor: pointer; align-items: center; border: 1px solid transparent;
         }
         .video-item:active { background: #444; border-color: #666; }
         .video-thumb { width: 100px; height: 56px; object-fit: cover; border-radius: 4px; background: #000; }
@@ -152,6 +161,8 @@
         }
         @media (orientation: landscape) {
             #controls-wrapper { display: none; }
+            /* Se estiver em landscape, a barra de toggle tbm some pois já é full */
+            #ui-toggle-bar { display: none; }
             #subtitle-container { bottom: 10%; }
         }
 
@@ -228,6 +239,8 @@
         <a href="https://downsub.com/" target="_blank" class="btn-link">Baixar Legenda do YouTube (DownSub)</a>
     </div>
 
+    <div id="ui-toggle-bar" onclick="toggleMainUI()">🔼</div>
+
     <div id="video-wrapper">
         <video id="mainVideo" controls playsinline></video>
         <div id="yt-container"><div id="yt-player"></div></div>
@@ -250,6 +263,20 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
+        // --- FUNÇÃO DE TOGGLE UI (NOVO) ---
+        function toggleMainUI() {
+            const controls = document.getElementById('controls-wrapper');
+            const bar = document.getElementById('ui-toggle-bar');
+            
+            if (controls.style.display === 'none') {
+                controls.style.display = 'block';
+                bar.innerText = '🔼';
+            } else {
+                controls.style.display = 'none';
+                bar.innerText = '🔽';
+            }
+        }
+
         // --- VARIÁVEIS ---
         const video = document.getElementById('mainVideo');
         const ytContainer = document.getElementById('yt-container');
@@ -257,7 +284,6 @@
         const unlockBtn = document.getElementById('unlock-yt-btn');
         const ytInput = document.getElementById('yt-search-input');
         
-        // Elementos de Busca
         const resultsContainer = document.getElementById('search-results-container');
         const resultsList = document.getElementById('search-results-list');
         const resultsArrow = document.getElementById('results-arrow');
@@ -287,8 +313,6 @@
         let isDragging = false;
         let dragStartX = 0; let dragStartY = 0;
         let initialTop = 0; let initialLeft = 0;
-
-        // --- VARIÁVEIS DE BUSCA INFINITA ---
         let YOUTUBE_API_KEY = localStorage.getItem('ejoy_api_key') || "";
         let nextPageToken = "";
         let currentQuery = "";
@@ -304,155 +328,82 @@
             }
         }
 
-        // --- 1. BUSCA & INFINITE SCROLL ---
-        
         async function initSearch() {
             const query = ytInput.value.trim();
-            if (query.includes('youtube.com') || query.includes('youtu.be')) {
-                loadYouTubeFromInput(); return;
-            }
+            if (query.includes('youtube.com') || query.includes('youtu.be')) { loadYouTubeFromInput(); return; }
             if (!YOUTUBE_API_KEY) { apiKeyConfig.style.display = 'block'; return; }
             if (!query) return;
-
-            // Reset
-            currentQuery = query;
-            nextPageToken = "";
-            resultsList.innerHTML = "";
-            resultsContainer.style.display = 'block';
-            resultsList.classList.remove('hidden'); // Garante que está expandido
+            currentQuery = query; nextPageToken = ""; resultsList.innerHTML = "";
+            resultsContainer.style.display = 'block'; resultsList.classList.remove('hidden'); 
             resultsArrow.classList.remove('collapsed');
-            
             await fetchVideos();
         }
 
         async function fetchVideos() {
             if (isFetching) return;
             isFetching = true;
-
-            // Indicador de loading
             const loader = document.createElement('div');
-            loader.className = 'loading-more';
-            loader.innerText = 'Carregando vídeos...';
+            loader.className = 'loading-more'; loader.innerText = 'Carregando...';
             resultsList.appendChild(loader);
-
             try {
                 let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(currentQuery)}&key=${YOUTUBE_API_KEY}`;
                 if (nextPageToken) url += `&pageToken=${nextPageToken}`;
-
                 const res = await fetch(url);
                 const data = await res.json();
-                
-                // Remove loader
                 loader.remove();
-
-                if (data.error) {
-                    alert(`Erro API: ${data.error.message}`);
-                    return;
-                }
-
-                nextPageToken = data.nextPageToken || ""; // Salva token para próxima página
-
+                if (data.error) { alert(`Erro API: ${data.error.message}`); return; }
+                nextPageToken = data.nextPageToken || "";
                 data.items.forEach(item => {
                     const vidId = item.id.videoId;
                     const title = item.snippet.title;
                     const channel = item.snippet.channelTitle;
                     const thumb = item.snippet.thumbnails.medium.url;
-
                     const div = document.createElement('div');
                     div.className = 'video-item';
-                    div.innerHTML = `
-                        <img src="${thumb}" class="video-thumb">
-                        <div class="video-info">
-                            <div class="video-title">${title}</div>
-                            <div class="video-channel">${channel}</div>
-                        </div>
-                    `;
-                    div.onclick = () => {
-                        selectSearchedVideo(vidId);
-                        // Opcional: Colapsar resultados automaticamente ao clicar
-                        toggleResults(true); 
-                    };
+                    div.innerHTML = `<img src="${thumb}" class="video-thumb"><div class="video-info"><div class="video-title">${title}</div><div class="video-channel">${channel}</div></div>`;
+                    div.onclick = () => { selectSearchedVideo(vidId); toggleResults(true); };
                     resultsList.appendChild(div);
                 });
-
-            } catch (err) {
-                loader.innerText = "Erro de conexão";
-            } finally {
-                isFetching = false;
-            }
+            } catch (err) { loader.innerText = "Erro de conexão"; } finally { isFetching = false; }
         }
 
-        // Detecta Scroll no fim da lista
         resultsList.addEventListener('scroll', () => {
             if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50) {
-                if (nextPageToken && !isFetching) {
-                    fetchVideos();
-                }
+                if (nextPageToken && !isFetching) fetchVideos();
             }
         });
-
         function toggleResults(forceCollapse = false) {
-            if (forceCollapse) {
-                resultsList.classList.add('hidden');
-                resultsArrow.classList.add('collapsed');
-            } else {
-                resultsList.classList.toggle('hidden');
-                resultsArrow.classList.toggle('collapsed');
-            }
+            if (forceCollapse) { resultsList.classList.add('hidden'); resultsArrow.classList.add('collapsed'); }
+            else { resultsList.classList.toggle('hidden'); resultsArrow.classList.toggle('collapsed'); }
         }
-
-        function selectSearchedVideo(vidId) {
-            ytInput.value = `https://www.youtube.com/watch?v=${vidId}`;
-            loadYouTube(vidId);
-        }
-
+        function selectSearchedVideo(vidId) { ytInput.value = `https://www.youtube.com/watch?v=${vidId}`; loadYouTube(vidId); }
         function loadYouTubeFromInput() {
-            const url = ytInput.value;
-            const videoId = extractVideoID(url);
+            const url = ytInput.value; const videoId = extractVideoID(url);
             if(!videoId) { alert("Link inválido."); return; }
             loadYouTube(videoId);
         }
 
-        // --- 2. CORE PLAYERS & GESTURES ---
         function resetApp() {
-            localStorage.clear(); // Limpa tudo
-            location.reload(); // Maneira mais limpa de resetar tudo
+            localStorage.clear(); location.reload();
         }
-
         function onYouTubeIframeAPIReady() {}
-
         function loadYouTube(videoId) {
-            subtitles = []; subContent.innerHTML = "";
-            playerType = 'youtube';
-            video.style.display = 'none'; video.pause();
-            ytContainer.style.display = 'flex';
-            gestureLayer.style.display = 'block';
-            unlockBtn.style.display = 'block';
-            ytControlsLocked = true;
-
+            subtitles = []; subContent.innerHTML = ""; playerType = 'youtube';
+            video.style.display = 'none'; video.pause(); ytContainer.style.display = 'flex';
+            gestureLayer.style.display = 'block'; unlockBtn.style.display = 'block'; ytControlsLocked = true;
             localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`);
             localStorage.setItem('ejoy_mode', 'youtube');
-
-            if(ytPlayer) {
-                ytPlayer.loadVideoById(videoId);
-            } else {
-                ytPlayer = new YT.Player('yt-player', {
-                    height: '100%', width: '100%', videoId: videoId,
-                    playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, 
-                });
-            }
+            if(ytPlayer) { ytPlayer.loadVideoById(videoId); } 
+            else { ytPlayer = new YT.Player('yt-player', { height: '100%', width: '100%', videoId: videoId, playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, }); }
             startYTSync();
+            
+            // Opcional: auto colapsar a UI ao dar play
+            // toggleMainUI();
         }
-
         function toggleYtControls() {
             const iframe = document.querySelector('iframe');
-            if(ytControlsLocked) {
-                gestureLayer.style.display = 'none'; iframe.style.pointerEvents = 'auto';
-                unlockBtn.innerText = "🔒 Ativar Gestos"; ytControlsLocked = false;
-            } else {
-                gestureLayer.style.display = 'block'; iframe.style.pointerEvents = 'none';
-                unlockBtn.innerText = "⚙️ Controles YouTube"; ytControlsLocked = true;
-            }
+            if(ytControlsLocked) { gestureLayer.style.display = 'none'; iframe.style.pointerEvents = 'auto'; unlockBtn.innerText = "🔒 Ativar Gestos"; ytControlsLocked = false; }
+            else { gestureLayer.style.display = 'block'; iframe.style.pointerEvents = 'none'; unlockBtn.innerText = "⚙️ Controles YouTube"; ytControlsLocked = true; }
         }
         function extractVideoID(url) {
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;

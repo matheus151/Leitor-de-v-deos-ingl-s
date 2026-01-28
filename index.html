@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V6.0)</title>
+    <title>Player Estudo Pro (V7.0 - YouTube)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -18,51 +18,73 @@
             background: #1a1a1a; border-bottom: 1px solid #333; z-index: 50; padding: 8px;
             transition: opacity 0.3s;
         }
+        
+        /* Área de YouTube e Arquivo */
+        .input-group { display: flex; gap: 5px; margin-bottom: 8px; }
+        
+        .yt-input {
+            background: #333; border: 1px solid #444; color: #fff; padding: 8px;
+            border-radius: 6px; flex-grow: 1; font-size: 0.8rem;
+        }
+        .yt-btn {
+            background: #e52d27; color: #fff; border: none; padding: 0 15px;
+            border-radius: 6px; font-weight: bold; cursor: pointer;
+        }
+
         #file-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
         .custom-file-upload {
             border: 1px solid #444; display: flex; align-items: center; justify-content: center;
             padding: 8px; cursor: pointer; background: #333; border-radius: 6px; 
             flex-grow: 1; text-align: center; font-weight: 600; font-size: 0.8rem;
         }
+
         #style-controls {
             display: flex; justify-content: space-around; align-items: center;
             font-size: 0.8rem; background: #222; padding: 5px; border-radius: 6px;
         }
         .color-picker-label { display: flex; align-items: center; gap: 5px; }
         input[type="color"] { border: none; width: 30px; height: 30px; background: none; padding: 0; }
+        
         .btn-link {
             text-decoration: none; color: #f1c40f; font-size: 0.7rem; display: block;
             text-align: center; margin-top: 5px; opacity: 0.8;
         }
         input[type="file"] { display: none; }
         
-        /* Status de Memória */
         #resume-status {
             font-size: 0.75rem; color: #4cd137; text-align: center; margin-top: 5px; display: none;
         }
 
-        /* --- VÍDEO --- */
+        /* --- ÁREA DO VÍDEO E PLAYER --- */
         #video-wrapper { 
             position: relative; flex-grow: 1; display: flex; 
             align-items: center; justify-content: center; background: #000; 
             overflow: hidden; width: 100%; height: 100%;
         }
-        video { width: 100%; max-height: 100%; object-fit: contain; }
+        
+        /* O vídeo local */
+        video { width: 100%; max-height: 100%; object-fit: contain; display: block; }
+        
+        /* Container do YouTube (escondido por padrão) */
+        #yt-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; align-items: center; justify-content: center; z-index: 1;
+        }
+        iframe { width: 100%; height: 100%; border: none; }
 
         /* --- LEGENDAS (Drag & Drop) --- */
         #subtitle-container {
             position: absolute; 
-            /* Posição inicial mais alta */
             bottom: 15%; left: 50%; transform: translateX(-50%);
             width: auto; min-width: 80%; max-width: 98%;
-            z-index: 20;
+            z-index: 20; /* Fica acima do YouTube */
             display: flex; flex-direction: column; align-items: center;
         }
 
         .subtitle-box {
             background-color: rgba(0, 0, 0, 0.7);
             color: #ffffff;
-            padding: 0 12px 8px 12px; /* Espaço para a barra de topo */
+            padding: 0 12px 8px 12px;
             border-radius: 12px;
             pointer-events: auto; 
             user-select: none; -webkit-user-select: none; touch-action: none;
@@ -72,7 +94,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
-        /* BARRA DE ARRASTAR (NOVIDADE) */
         #drag-handle {
             width: 40px; height: 5px; background-color: rgba(255,255,255,0.3);
             margin: 6px auto; border-radius: 10px; cursor: move;
@@ -118,13 +139,18 @@
 <body>
 
     <div id="controls-wrapper">
+        <div class="input-group">
+            <input type="text" id="yt-url" class="yt-input" placeholder="Cole link do YouTube aqui...">
+            <button class="yt-btn" onclick="loadYouTube()">▶</button>
+        </div>
+
         <div id="file-controls">
             <label class="custom-file-upload">
-                🎬 Carregar Vídeo
+                📂 Vídeo Local
                 <input type="file" id="videoInput" accept="video/mp4, video/x-m4v, video/*">
             </label>
             <label class="custom-file-upload">
-                📝 Carregar Legenda
+                📝 Legenda
                 <input type="file" id="subInput" accept=".srt, .vtt">
             </label>
         </div>
@@ -135,16 +161,19 @@
             <label class="color-picker-label">Texto: <input type="color" id="textColor" value="#ffffff"></label>
             <label class="color-picker-label">Fundo: <input type="color" id="bgColor" value="#000000"></label>
         </div>
-        <a href="https://freesubtitles.ai/" target="_blank" class="btn-link">Gerar Legenda (Site Externo)</a>
+        <a href="https://downsub.com/" target="_blank" class="btn-link">Baixar Legenda do YouTube (DownSub)</a>
     </div>
 
     <div id="video-wrapper">
         <video id="mainVideo" controls playsinline></video>
+        <div id="yt-container"><div id="yt-player"></div></div>
+
         <div id="gesture-feedback">⏪</div>
         
         <div id="subtitle-container">
             <div class="subtitle-box" id="subtitle-box">
-                <div id="drag-handle"></div> <div id="subtitle-content"></div>
+                <div id="drag-handle"></div>
+                <div id="subtitle-content"></div>
             </div>
         </div>
 
@@ -155,16 +184,19 @@
         </div>
     </div>
 
+    <script src="https://www.youtube.com/iframe_api"></script>
+
     <script>
         // --- VARIÁVEIS ---
         const video = document.getElementById('mainVideo');
+        const ytContainer = document.getElementById('yt-container');
+        const ytInput = document.getElementById('yt-url');
         const subContainer = document.getElementById('subtitle-container');
         const subBox = document.getElementById('subtitle-box');
         const subContent = document.getElementById('subtitle-content');
         const dragHandle = document.getElementById('drag-handle');
         const resumeStatus = document.getElementById('resume-status');
         
-        // Elementos de UI
         const transCard = document.getElementById('translation-card');
         const transOrig = document.getElementById('phrase-orig');
         const transRes = document.getElementById('phrase-trans');
@@ -177,63 +209,149 @@
         let selectedWords = new Set();
         let lastRenderedText = "";
         
-        // Estado de "Arrastar"
-        let isDragging = false;
-        let dragStartY = 0;
-        let dragStartX = 0;
-        let initialTop = 0;
-        let initialLeft = 0;
-
-        // --- 1. PERSISTÊNCIA (Continuar de onde parou) ---
+        // Estado de Player
+        let playerType = 'local'; // 'local' ou 'youtube'
+        let ytPlayer = null;
+        let ytTimer = null; // Intervalo para checar tempo do YT
         
-        // Ao carregar a página
+        // Drag
+        let isDragging = false;
+        let dragStartY = 0; let dragStartX = 0;
+        let initialTop = 0; let initialLeft = 0;
+
+        // --- 1. CONFIGURAÇÃO YOUTUBE ---
+        function onYouTubeIframeAPIReady() {
+            // A API está pronta, mas só criamos o player quando o usuário pedir
+        }
+
+        function loadYouTube() {
+            const url = ytInput.value;
+            const videoId = extractVideoID(url);
+            
+            if(!videoId) { alert("Link inválido"); return; }
+            
+            playerType = 'youtube';
+            video.style.display = 'none'; // Esconde player local
+            video.pause();
+            ytContainer.style.display = 'flex'; // Mostra YouTube
+
+            // Salva URL para persistencia
+            localStorage.setItem('ejoy_ytUrl', url);
+            localStorage.setItem('ejoy_mode', 'youtube');
+
+            if(ytPlayer) {
+                ytPlayer.loadVideoById(videoId);
+            } else {
+                ytPlayer = new YT.Player('yt-player', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: videoId,
+                    playerVars: { 'playsinline': 1 },
+                    events: {
+                        'onStateChange': onPlayerStateChange
+                    }
+                });
+            }
+            // Inicia loop de sincronia
+            startYTSync();
+        }
+
+        function extractVideoID(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        function startYTSync() {
+            if(ytTimer) clearInterval(ytTimer);
+            // YouTube não tem evento 'timeupdate', então checamos 10x por segundo
+            ytTimer = setInterval(() => {
+                if(playerType === 'youtube' && ytPlayer && ytPlayer.getCurrentTime) {
+                    const time = ytPlayer.getCurrentTime();
+                    // Salva persistencia
+                    localStorage.setItem('ejoy_time', time);
+                    renderLogic(time);
+                }
+            }, 100);
+        }
+
+        function onPlayerStateChange(event) {
+            // Se pausou ou acabou
+            if (event.data == YT.PlayerState.PAUSED || event.data == YT.PlayerState.ENDED) {
+               // Opcional: fazer algo
+            }
+        }
+
+        // --- 2. PERSISTÊNCIA ---
         window.onload = () => {
-            // Tenta carregar legendas salvas
+            // Legenda
             const savedSubs = localStorage.getItem('ejoy_subs');
             if (savedSubs) {
                 try {
                     subtitles = JSON.parse(savedSubs);
                     resumeStatus.style.display = 'block';
-                    resumeStatus.innerText = `✅ Legenda recuperada (${subtitles.length} linhas)`;
-                } catch(e) { console.log('Erro ao recuperar legenda'); }
+                    resumeStatus.innerText = `✅ Legenda carregada`;
+                } catch(e) {}
             }
 
-            // Tenta recuperar nome do vídeo e tempo
-            const savedVidName = localStorage.getItem('ejoy_vidName');
-            const savedTime = localStorage.getItem('ejoy_time');
+            // Modo e Vídeo
+            const lastMode = localStorage.getItem('ejoy_mode'); // 'local' ou 'youtube'
+            const lastTime = localStorage.getItem('ejoy_time');
             
-            if (savedVidName && savedTime) {
-                if(!resumeStatus.innerText) resumeStatus.style.display = 'block';
-                resumeStatus.innerText += ` | ⏳ Parou em ${formatTime(savedTime)}`;
-                alert(`Bem-vindo de volta!\n\nSelecione o vídeo "${savedVidName}" novamente para continuar de ${formatTime(savedTime)}.\n\n(O iPhone exige que você selecione o arquivo por segurança).`);
+            if (lastMode === 'youtube') {
+                const savedUrl = localStorage.getItem('ejoy_ytUrl');
+                if(savedUrl) {
+                    ytInput.value = savedUrl;
+                    if(confirm(`Continuar vídeo do YouTube de ${formatTime(lastTime)}?`)) {
+                        loadYouTube();
+                        // Pequeno delay para o player carregar antes de dar seek
+                        setTimeout(() => {
+                            if(ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(parseFloat(lastTime));
+                        }, 1500);
+                    }
+                }
+            } else {
+                // Modo Local
+                const savedVidName = localStorage.getItem('ejoy_vidName');
+                if (savedVidName && lastTime) {
+                    resumeStatus.style.display = 'block';
+                    resumeStatus.innerText += ` | ⏳ Último local: ${formatTime(lastTime)}`;
+                    alert(`Para continuar "${savedVidName}", selecione o arquivo novamente.`);
+                }
             }
         };
 
-        // Salva o tempo a cada atualização
-        video.addEventListener('timeupdate', () => {
-            if (video.currentTime > 0) {
-                localStorage.setItem('ejoy_time', video.currentTime);
-            }
-            renderLogic();
-        });
-
-        // --- 2. UPLOADS INTELIGENTES ---
+        // --- 3. UPLOADS LOCAL ---
         document.getElementById('videoInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
-                video.src = URL.createObjectURL(file);
-                localStorage.setItem('ejoy_vidName', file.name);
+                playerType = 'local';
+                ytContainer.style.display = 'none';
+                if(ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+                if(ytTimer) clearInterval(ytTimer);
                 
-                // Verifica se é o mesmo vídeo de antes para restaurar tempo
+                video.style.display = 'block';
+                video.src = URL.createObjectURL(file);
+                
+                localStorage.setItem('ejoy_vidName', file.name);
+                localStorage.setItem('ejoy_mode', 'local');
+                
                 const lastVid = localStorage.getItem('ejoy_vidName');
                 const lastTime = localStorage.getItem('ejoy_time');
-                
                 if (file.name === lastVid && lastTime) {
                     video.currentTime = parseFloat(lastTime);
                 }
             }
         };
 
+        video.addEventListener('timeupdate', () => {
+            if(playerType === 'local') {
+                localStorage.setItem('ejoy_time', video.currentTime);
+                renderLogic(video.currentTime);
+            }
+        });
+
+        // --- 4. LEGENDAS ---
         document.getElementById('subInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
@@ -241,73 +359,14 @@
                 reader.onload = r => { 
                     try {
                         subtitles = parseSubtitles(r.target.result); 
-                        // Salva legenda na memória (Limitado a ~5MB)
-                        try {
-                            localStorage.setItem('ejoy_subs', JSON.stringify(subtitles));
-                            alert("Legenda salva! Se fechar o app, ela estará aqui quando voltar.");
-                        } catch (err) {
-                            alert("Legenda carregada, mas muito grande para salvar na memória.");
-                        }
-                    } catch(e) { alert("Erro no arquivo."); }
+                        try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
+                        alert("Legenda carregada!");
+                    } catch(e) { alert("Erro arquivo."); }
                 };
                 reader.readAsText(file);
             }
         };
 
-        // --- 3. LÓGICA DE ARRASTAR (DRAG) ---
-        dragHandle.addEventListener('touchstart', dragStart, {passive: false});
-        dragHandle.addEventListener('touchmove', dragMove, {passive: false});
-        dragHandle.addEventListener('touchend', dragEnd);
-
-        function dragStart(e) {
-            e.preventDefault();
-            isDragging = true;
-            // Pega posição inicial do toque
-            dragStartX = e.touches[0].clientX;
-            dragStartY = e.touches[0].clientY;
-            
-            // Pega posição atual do container
-            const rect = subContainer.getBoundingClientRect();
-            initialTop = rect.top;
-            initialLeft = rect.left;
-            
-            // Remove o posicionamento automático (bottom/transform) para usar top/left absoluto
-            subContainer.style.bottom = 'auto';
-            subContainer.style.transform = 'none';
-            subContainer.style.top = initialTop + 'px';
-            subContainer.style.left = initialLeft + 'px';
-        }
-
-        function dragMove(e) {
-            if (!isDragging) return;
-            e.preventDefault();
-            
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            
-            const deltaX = currentX - dragStartX;
-            const deltaY = currentY - dragStartY;
-            
-            subContainer.style.top = (initialTop + deltaY) + 'px';
-            subContainer.style.left = (initialLeft + deltaX) + 'px';
-        }
-
-        function dragEnd() {
-            isDragging = false;
-        }
-
-
-        // --- 4. CORES ---
-        textColorInput.addEventListener('input', (e) => {
-            subContent.style.color = e.target.value;
-        });
-        bgColorInput.addEventListener('input', (e) => {
-            const hex = e.target.value;
-            const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
-            subBox.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.7)`;
-        });
-
-        // --- 5. PARSER E RENDER ---
         function parseSubtitles(text) {
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             const pattern = /(?:^|\n)(?:(\d+)\n)?(\d{2}:\d{2}:\d{2}[,.]\d{3})\s-->\s(\d{2}:\d{2}:\d{2}[,.]\d{3}).*?\n([\s\S]*?)(?=\n\n|$)/g;
@@ -328,16 +387,14 @@
             const p = str.split(':');
             return (parseFloat(p[0]) * 3600) + (parseFloat(p[1]) * 60) + parseFloat(p[2]);
         }
-        
-        function formatTime(seconds) {
-            const date = new Date(seconds * 1000);
-            return date.toISOString().substr(11, 8);
+        function formatTime(s) {
+            if(!s) return "00:00";
+            return new Date(s*1000).toISOString().substr(11, 8);
         }
 
-        function renderLogic() {
-            const time = video.currentTime;
+        // --- 5. RENDER ---
+        function renderLogic(time) {
             const sub = subtitles.find(s => time >= s.start && time <= s.end);
-            
             if (sub) {
                 if (sub.text !== lastRenderedText) {
                     renderSubtitle(sub.text);
@@ -363,109 +420,152 @@
             const btn = document.createElement('span');
             btn.className = 'translate-btn';
             btn.innerHTML = '🌐';
-            btn.addEventListener('touchstart', (e) => { e.stopPropagation(); });
+            btn.addEventListener('touchstart', (e) => e.stopPropagation());
             btn.onclick = (e) => {
-                e.stopPropagation(); video.pause(); translateText(text, text);
+                e.stopPropagation(); 
+                pauseAnyPlayer();
+                translateText(text, text);
             };
             subContent.appendChild(btn);
         }
 
-        // --- 6. TOQUE E SELEÇÃO ---
+        function pauseAnyPlayer() {
+            if(playerType === 'local') video.pause();
+            if(playerType === 'youtube' && ytPlayer) ytPlayer.pauseVideo();
+        }
+        
+        function playAnyPlayer() {
+            if(playerType === 'local') video.play();
+            if(playerType === 'youtube' && ytPlayer) ytPlayer.playVideo();
+        }
+        
+        function setTimeAnyPlayer(time) {
+             if(playerType === 'local') video.currentTime = time;
+             if(playerType === 'youtube' && ytPlayer) ytPlayer.seekTo(time);
+        }
+        
+        function getCurrentTimeAny() {
+            if(playerType === 'local') return video.currentTime;
+            if(playerType === 'youtube' && ytPlayer) return ytPlayer.getCurrentTime();
+            return 0;
+        }
+
+        // --- 6. DRAG & STYLE ---
+        dragHandle.addEventListener('touchstart', dragStart, {passive: false});
+        dragHandle.addEventListener('touchmove', dragMove, {passive: false});
+        dragHandle.addEventListener('touchend', dragEnd);
+        
+        function dragStart(e) {
+            e.preventDefault(); isDragging = true;
+            dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
+            const rect = subContainer.getBoundingClientRect();
+            initialTop = rect.top; initialLeft = rect.left;
+            subContainer.style.bottom = 'auto'; subContainer.style.transform = 'none';
+            subContainer.style.top = initialTop + 'px'; subContainer.style.left = initialLeft + 'px';
+        }
+        function dragMove(e) {
+            if (!isDragging) return; e.preventDefault();
+            const dx = e.touches[0].clientX - dragStartX;
+            const dy = e.touches[0].clientY - dragStartY;
+            subContainer.style.top = (initialTop + dy) + 'px';
+            subContainer.style.left = (initialLeft + dx) + 'px';
+        }
+        function dragEnd() { isDragging = false; }
+
+        textColorInput.addEventListener('input', (e) => subContent.style.color = e.target.value);
+        bgColorInput.addEventListener('input', (e) => {
+            const h = e.target.value;
+            const r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16);
+            subBox.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.7)`;
+        });
+
+        // --- 7. TOQUE ---
         subContent.addEventListener('touchstart', (e) => {
             if(e.target.classList.contains('translate-btn')) return;
-            isSelecting = true;
-            selectedWords.clear();
-            transCard.style.display = 'none';
-            video.pause(); 
+            isSelecting = true; selectedWords.clear(); transCard.style.display = 'none';
+            pauseAnyPlayer();
             handleSelection(e.touches[0]);
         }, {passive: false});
 
         subContent.addEventListener('touchmove', (e) => {
-            if (!isSelecting) return;
-            e.preventDefault(); 
-            handleSelection(e.touches[0]);
+            if (!isSelecting) return; e.preventDefault(); handleSelection(e.touches[0]);
         }, {passive: false});
 
         subContent.addEventListener('touchend', () => {
-            isSelecting = false;
-            if (selectedWords.size > 0) translateSelection();
+            isSelecting = false; if (selectedWords.size > 0) translateSelection();
         });
 
         function handleSelection(touch) {
-            const element = document.elementFromPoint(touch.clientX, touch.clientY);
-            if (element && element.classList.contains('word')) {
-                element.classList.add('selected');
-                selectedWords.add(element);
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (el && el.classList.contains('word')) {
+                el.classList.add('selected'); selectedWords.add(el);
             }
         }
 
         function translateSelection() {
-            const wordsArray = Array.from(selectedWords).sort((a, b) => a.dataset.index - b.dataset.index);
-            const phraseClean = wordsArray.map(el => el.dataset.raw).join(' ');
-            const phraseDisplay = wordsArray.map(el => el.textContent).join('');
-            translateText(phraseClean, phraseDisplay);
-            setTimeout(() => {
-                document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
-            }, 1000);
+            const arr = Array.from(selectedWords).sort((a,b) => a.dataset.index - b.dataset.index);
+            const txt = arr.map(el => el.dataset.raw).join(' ');
+            const disp = arr.map(el => el.textContent).join('');
+            translateText(txt, disp);
+            setTimeout(() => document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected')), 1000);
         }
 
-        async function translateText(textToApi, textToDisplay) {
-            transCard.style.display = 'block';
-            transOrig.textContent = textToDisplay;
-            transRes.className = 'loading';
-            transRes.textContent = '...';
+        async function translateText(src, dsp) {
+            transCard.style.display = 'block'; transOrig.textContent = dsp; 
+            transRes.className = 'loading'; transRes.textContent = '...';
             try {
-                const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToApi)}&langpair=en|pt-BR`;
-                const res = await fetch(url);
-                const data = await res.json();
-                if(data.responseData) transRes.textContent = data.responseData.translatedText;
-            } catch (err) { transRes.textContent = "Erro de rede"; }
+                const u = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(src)}&langpair=en|pt-BR`;
+                const r = await fetch(u); const d = await r.json();
+                if(d.responseData) transRes.textContent = d.responseData.translatedText;
+            } catch (e) { transRes.textContent = "Erro"; }
         }
 
-        // --- 7. GESTOS DE VÍDEO ---
+        // --- 8. GESTOS ---
         const gestureZone = document.getElementById('video-wrapper');
-        let touchStartX = 0; let touchEndX = 0;
+        let tStartX = 0; let tEndX = 0;
 
         gestureZone.addEventListener('touchstart', e => {
-            if(!e.target.closest('#subtitle-container')) touchStartX = e.changedTouches[0].screenX;
+            if(!e.target.closest('#subtitle-container')) tStartX = e.changedTouches[0].screenX;
         }, {passive: false});
 
         gestureZone.addEventListener('touchend', e => {
             if(!e.target.closest('#subtitle-container')) {
-                touchEndX = e.changedTouches[0].screenX;
+                tEndX = e.changedTouches[0].screenX;
                 handleGesture();
             }
         }, {passive: false});
 
         function handleGesture() {
-            const diff = touchEndX - touchStartX;
+            const diff = tEndX - tStartX;
             if (Math.abs(diff) < 50) return;
             if (diff < 0) { showFeedback('⏪'); jumpSubtitle(-1); } 
             else { showFeedback('⏩'); jumpSubtitle(1); }
         }
 
-        function jumpSubtitle(direction) {
+        function jumpSubtitle(dir) {
             if (subtitles.length === 0) return;
-            const now = video.currentTime;
-            let referenceIndex = subtitles.findIndex(s => s.start > now);
-            if (referenceIndex === -1) referenceIndex = subtitles.length;
-            const currentActiveIndex = subtitles.findIndex(s => now >= s.start && now <= s.end);
-            if (currentActiveIndex !== -1) referenceIndex = currentActiveIndex;
-            else if (direction === 1) referenceIndex = referenceIndex - 1; 
-            let targetIndex = referenceIndex + direction;
-            if (targetIndex < 0) targetIndex = 0;
-            if (targetIndex >= subtitles.length) targetIndex = subtitles.length - 1;
-            video.currentTime = subtitles[targetIndex].start + 0.01;
-            video.play();
+            const now = getCurrentTimeAny();
+            
+            let refIdx = subtitles.findIndex(s => s.start > now);
+            if (refIdx === -1) refIdx = subtitles.length;
+            
+            const currIdx = subtitles.findIndex(s => now >= s.start && now <= s.end);
+            if (currIdx !== -1) refIdx = currIdx;
+            else if (dir === 1) refIdx = refIdx - 1; 
+
+            let tgtIdx = refIdx + dir;
+            if (tgtIdx < 0) tgtIdx = 0;
+            if (tgtIdx >= subtitles.length) tgtIdx = subtitles.length - 1;
+            
+            const tgtTime = subtitles[tgtIdx].start + 0.1;
+            setTimeAnyPlayer(tgtTime);
+            playAnyPlayer();
         }
 
         function showFeedback(icon) {
-            gestureIcon.textContent = icon;
-            gestureIcon.style.opacity = 1;
+            gestureIcon.textContent = icon; gestureIcon.style.opacity = 1;
             setTimeout(() => gestureIcon.style.opacity = 0, 600);
         }
-        
-        video.onerror = () => { if(video.error) alert("Use vídeo MP4."); };
     </script>
 </body>
 </html>

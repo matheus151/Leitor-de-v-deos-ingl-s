@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V7.1 - Fix SRT/TXT)</title>
+    <title>Player Estudo Pro (V7.2)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -33,8 +33,8 @@
         #file-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
         .custom-file-upload {
             border: 1px solid #444; display: flex; align-items: center; justify-content: center;
-            padding: 8px; cursor: pointer; background: #333; border-radius: 6px; 
-            flex-grow: 1; text-align: center; font-weight: 600; font-size: 0.8rem;
+            padding: 10px; cursor: pointer; background: #333; border-radius: 6px; 
+            flex-grow: 1; text-align: center; font-weight: 600; font-size: 0.85rem;
         }
 
         #style-controls {
@@ -142,12 +142,12 @@
 
         <div id="file-controls">
             <label class="custom-file-upload">
-                📂 Vídeo Local
+                🎬 Vídeo Local
                 <input type="file" id="videoInput" accept="video/mp4, video/x-m4v, video/*">
             </label>
             <label class="custom-file-upload">
-                📝 Legenda
-                <input type="file" id="subInput" accept=".srt, .vtt, .txt">
+                📂 Legenda (SRT/TXT)
+                <input type="file" id="subInput" accept="*">
             </label>
         </div>
         
@@ -221,6 +221,13 @@
             const videoId = extractVideoID(url);
             if(!videoId) { alert("Link inválido"); return; }
             
+            // CORREÇÃO: Limpa legendas antigas
+            subtitles = [];
+            lastRenderedText = "";
+            subContent.innerHTML = "";
+            localStorage.removeItem('ejoy_subs');
+            alert("Modo YouTube Ativado!\n\nAgora carregue a legenda (.SRT ou .TXT) correspondente a este vídeo usando o botão 'Legenda'.");
+
             playerType = 'youtube';
             video.style.display = 'none';
             video.pause();
@@ -322,19 +329,25 @@
             }
         });
 
-        // --- 4. PARSER CORRIGIDO (SRT, VTT, TXT) ---
+        // --- 4. PARSER (SRT, TXT, VTT) ---
         document.getElementById('subInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
                 const reader = new FileReader();
                 reader.onload = r => { 
                     try {
-                        subtitles = parseSubtitles(r.target.result); 
-                        if (subtitles.length === 0) {
-                            alert("Aviso: Nenhuma legenda reconhecida. Verifique se o arquivo está no formato SRT ou VTT.");
+                        const content = r.target.result;
+                        // Tenta parsear
+                        const parsed = parseSubtitles(content); 
+                        
+                        if (parsed.length === 0) {
+                            alert("Aviso: O arquivo parece vazio ou inválido. Tente baixar o .SRT novamente.");
                         } else {
+                            subtitles = parsed;
                             try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
-                            alert(`Legenda carregada com sucesso! (${subtitles.length} linhas)`);
+                            alert(`Legenda carregada com sucesso! (${subtitles.length} linhas).`);
+                            resumeStatus.style.display = 'block';
+                            resumeStatus.innerText = "✅ Legenda Atualizada";
                         }
                     } catch(e) { alert("Erro ao ler arquivo."); }
                 };
@@ -343,13 +356,8 @@
         };
 
         function parseSubtitles(text) {
-            // Normaliza quebras de linha para evitar erros de formatação
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            
-            // Regex Otimizada V7.1:
-            // - Aceita formato SRT (vírgula) e VTT (ponto)
-            // - Não exige numeração de linha (1, 2, 3...)
-            // - Aceita timestamps com 1, 2 ou 3 digitos nos milissegundos
+            // Regex super permissiva para SRT, VTT e TXT formatado
             const pattern = /(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s-->\s(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})[^\n]*\n([\s\S]*?)(?=\n\n|$)/g;
             
             const result = [];
@@ -365,12 +373,10 @@
         }
 
         function timeToSec(str) {
-            // Garante que virgula vire ponto para o cálculo matemático
             str = str.replace(',', '.');
             const p = str.split(':');
             return (parseFloat(p[0]) * 3600) + (parseFloat(p[1]) * 60) + parseFloat(p[2]);
         }
-        
         function formatTime(s) {
             if(!s) return "00:00";
             return new Date(s*1000).toISOString().substr(11, 8);

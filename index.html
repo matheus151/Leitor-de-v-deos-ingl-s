@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V15.0)</title>
+    <title>Player Estudo Pro (V16.0 - Stable)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -98,7 +98,7 @@
         .btn-magic-sub { background: #27ae60; color: #fff; width: 100%; margin-bottom: 8px; padding: 12px; font-size: 0.9rem; border: 1px solid #2ecc71; animation: pulse 2s infinite; cursor: pointer; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.9; } 100% { opacity: 1; } }
 
-        /* CONTROLES DE ESTILO (Fonte e Cor) */
+        /* ESTILOS */
         #style-controls {
             display: flex; justify-content: space-between; align-items: center;
             font-size: 0.8rem; background: #222; padding: 6px; border-radius: 6px;
@@ -127,7 +127,6 @@
         #yt-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; z-index: 1; }
         iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
 
-        /* GESTOS */
         #gesture-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
         #unlock-yt-btn {
             position: absolute; top: 10px; right: 10px; z-index: 60;
@@ -148,11 +147,9 @@
             line-height: 1.4; text-align: center; position: relative;
             transition: background-color 0.3s, color 0.3s; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            /* Tamanho de fonte padrão da caixa */
             font-size: 1.2rem; 
         }
         
-        /* AJUSTE DRAG HANDLE: Pequeno novamente */
         #drag-handle {
             width: 40px; height: 5px; background-color: rgba(255,255,255,0.3);
             margin: 6px auto; border-radius: 10px; cursor: move;
@@ -164,16 +161,13 @@
             #subtitle-container { bottom: 10%; }
         }
 
-        /* PALAVRAS */
         .word {
-            /* AJUSTE: Usa em para herdar o tamanho da caixa principal */
             font-size: 1em; 
             padding: 4px 1px; border-radius: 4px; display: inline; cursor: pointer;
             box-decoration-break: clone; -webkit-box-decoration-break: clone;
         }
         .word.selected { background-color: #f1c40f !important; color: #000 !important; }
 
-        /* AJUSTE ÍCONE GLOBO: Menor */
         .translate-btn {
             display: inline-flex; align-items: center; justify-content: center;
             background: #fff; color: #000; border-radius: 50%;
@@ -269,37 +263,7 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --- CONFIGURAÇÕES DE UI ---
-        let currentFontSize = 1.2; // Tamanho padrão em rem
-
-        function changeFontSize(delta) {
-            currentFontSize += delta;
-            if (currentFontSize < 0.5) currentFontSize = 0.5;
-            if (currentFontSize > 3.0) currentFontSize = 3.0;
-            document.getElementById('subtitle-box').style.fontSize = currentFontSize + 'rem';
-        }
-
-        function toggleMainUI() {
-            const controls = document.getElementById('controls-wrapper');
-            const bar = document.getElementById('ui-toggle-bar');
-            if (controls.style.display === 'none') { controls.style.display = 'block'; bar.innerText = '🔼'; } 
-            else { controls.style.display = 'none'; bar.innerText = '🔽'; }
-        }
-
-        function autoFindSubtitle() {
-            if (playerType === 'youtube') {
-                const url = localStorage.getItem('ejoy_ytUrl');
-                if(!url) { alert("Nenhum vídeo carregado."); return; }
-                window.open(`https://downsub.com/?url=${encodeURIComponent(url)}`, '_blank');
-            } else if (playerType === 'local') {
-                const filename = localStorage.getItem('ejoy_vidName');
-                if(!filename) { alert("Nenhum vídeo local carregado."); return; }
-                let cleanName = filename.replace(/\.(mp4|mkv|avi|mov)$/i, '').replace(/[._]/g, ' ');
-                window.open(`https://www.opensubtitles.org/en/search/sublanguageid-por,pob/q-${encodeURIComponent(cleanName)}`, '_blank');
-            }
-        }
-
-        // --- VARIÁVEIS ---
+        // --- VARIÁVEIS GLOBAIS ---
         const video = document.getElementById('mainVideo');
         const ytContainer = document.getElementById('yt-container');
         const gestureLayer = document.getElementById('gesture-layer');
@@ -337,13 +301,45 @@
         let nextPageToken = "";
         let currentQuery = "";
         let isFetching = false;
+        
+        // Memória de Vídeo Local (CORREÇÃO V16)
+        let currentVideoURL = null; 
+        let currentFontSize = 1.2;
+
+        // --- FUNÇÕES DE UI ---
+        function changeFontSize(delta) {
+            currentFontSize += delta;
+            if (currentFontSize < 0.5) currentFontSize = 0.5;
+            if (currentFontSize > 3.0) currentFontSize = 3.0;
+            subBox.style.fontSize = currentFontSize + 'rem';
+        }
+
+        function toggleMainUI() {
+            const controls = document.getElementById('controls-wrapper');
+            const bar = document.getElementById('ui-toggle-bar');
+            if (controls.style.display === 'none') { controls.style.display = 'block'; bar.innerText = '🔼'; } 
+            else { controls.style.display = 'none'; bar.innerText = '🔽'; }
+        }
+
+        function autoFindSubtitle() {
+            if (playerType === 'youtube') {
+                const url = localStorage.getItem('ejoy_ytUrl');
+                if(!url) { alert("Nenhum vídeo carregado."); return; }
+                window.open(`https://downsub.com/?url=${encodeURIComponent(url)}`, '_blank');
+            } else if (playerType === 'local') {
+                const filename = localStorage.getItem('ejoy_vidName');
+                if(!filename) { alert("Nenhum vídeo local carregado."); return; }
+                let cleanName = filename.replace(/\.(mp4|mkv|avi|mov)$/i, '').replace(/[._]/g, ' ');
+                window.open(`https://www.opensubtitles.org/en/search/sublanguageid-por,pob/q-${encodeURIComponent(cleanName)}`, '_blank');
+            }
+        }
 
         function saveApiKey() {
             const key = document.getElementById('api-key-input').value.trim();
             if(key) { YOUTUBE_API_KEY = key; localStorage.setItem('ejoy_api_key', key); apiKeyConfig.style.display = 'none'; alert("Chave salva!"); }
         }
 
-        // --- BUSCA YOUTUBE COM DURAÇÃO ---
+        // --- BUSCA YOUTUBE ---
         async function initSearch() {
             const query = ytInput.value.trim();
             if (query.includes('youtube.com') || query.includes('youtu.be')) { loadYouTubeFromInput(); return; }
@@ -358,46 +354,24 @@
             if (isFetching) return; isFetching = true;
             const loader = document.createElement('div'); loader.className = 'loading-more'; loader.innerText = 'Carregando...'; resultsList.appendChild(loader);
             try {
-                // 1. Busca IDs
                 let searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(currentQuery)}&key=${YOUTUBE_API_KEY}`;
                 if (nextPageToken) searchUrl += `&pageToken=${nextPageToken}`;
                 const res = await fetch(searchUrl); const data = await res.json();
                 loader.remove();
                 if (data.error) { alert(`Erro API: ${data.error.message}`); return; }
-                
                 nextPageToken = data.nextPageToken || "";
-                
-                // 2. Coleta IDs para buscar Duração
                 const videoIds = data.items.map(item => item.id.videoId).join(',');
                 let videosData = {};
-                
                 if (videoIds) {
                     const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
-                    const resDetails = await fetch(detailsUrl);
-                    const dataDetails = await resDetails.json();
-                    if (!dataDetails.error) {
-                        dataDetails.items.forEach(v => {
-                            videosData[v.id] = parseDuration(v.contentDetails.duration);
-                        });
-                    }
+                    const resDetails = await fetch(detailsUrl); const dataDetails = await resDetails.json();
+                    if (!dataDetails.error) { dataDetails.items.forEach(v => { videosData[v.id] = parseDuration(v.contentDetails.duration); }); }
                 }
-
-                // 3. Renderiza
                 data.items.forEach(item => {
-                    const vidId = item.id.videoId;
-                    const title = item.snippet.title;
-                    const channel = item.snippet.channelTitle;
-                    const thumb = item.snippet.thumbnails.medium.url;
+                    const vidId = item.id.videoId; const title = item.snippet.title; const channel = item.snippet.channelTitle; const thumb = item.snippet.thumbnails.medium.url;
                     const duration = videosData[vidId] || "";
-
                     const div = document.createElement('div'); div.className = 'video-item';
-                    div.innerHTML = `
-                        <div class="video-thumb-wrapper">
-                            <img src="${thumb}" class="video-thumb">
-                            ${duration ? `<span class="video-duration">${duration}</span>` : ''}
-                        </div>
-                        <div class="video-info"><div class="video-title">${title}</div><div class="video-channel">${channel}</div></div>
-                    `;
+                    div.innerHTML = `<div class="video-thumb-wrapper"><img src="${thumb}" class="video-thumb">${duration ? `<span class="video-duration">${duration}</span>` : ''}</div><div class="video-info"><div class="video-title">${title}</div><div class="video-channel">${channel}</div></div>`;
                     div.onclick = () => { selectSearchedVideo(vidId); toggleResults(true); };
                     resultsList.appendChild(div);
                 });
@@ -405,28 +379,15 @@
         }
 
         function parseDuration(pt) {
-            // Converte PT1H2M10S para 1:02:10
-            const match = pt.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-            if (!match) return "";
-            const h = (match[1] || '').replace('H', '');
-            const m = (match[2] || '').replace('M', '');
-            const s = (match[3] || '').replace('S', '');
-            
-            let str = "";
-            if (h) str += h + ":";
-            str += (h && m.length < 2 ? "0" + m : m || "0") + ":";
-            str += (s.length < 2 ? "0" + s : s || "00");
-            
-            // Corrige se for só segundos (PT30S -> 0:30)
-            if (!h && !m) str = "0:" + str.replace(":", "");
-            if (str.endsWith(':')) str += "00";
+            const match = pt.match(/PT(\d+H)?(\d+M)?(\d+S)?/); if (!match) return "";
+            const h = (match[1] || '').replace('H', ''); const m = (match[2] || '').replace('M', ''); const s = (match[3] || '').replace('S', '');
+            let str = ""; if (h) str += h + ":"; str += (h && m.length < 2 ? "0" + m : m || "0") + ":"; str += (s.length < 2 ? "0" + s : s || "00");
+            if (!h && !m) str = "0:" + str.replace(":", ""); if (str.endsWith(':')) str += "00";
             return str;
         }
 
         resultsList.addEventListener('scroll', () => {
-            if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50) {
-                if (nextPageToken && !isFetching) fetchVideos();
-            }
+            if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50) { if (nextPageToken && !isFetching) fetchVideos(); }
         });
         function toggleResults(forceCollapse = false) {
             if (forceCollapse) { resultsList.classList.add('hidden'); resultsArrow.classList.add('collapsed'); }
@@ -438,11 +399,20 @@
             if(!videoId) { alert("Link inválido."); return; } loadYouTube(videoId);
         }
 
-        function resetApp() { localStorage.clear(); location.reload(); }
+        function resetApp() {
+            // CORREÇÃO: Limpeza profunda
+            if(currentVideoURL) URL.revokeObjectURL(currentVideoURL);
+            localStorage.clear(); 
+            location.reload(); 
+        }
+        
         function onYouTubeIframeAPIReady() {}
         function loadYouTube(videoId) {
             subtitles = []; subContent.innerHTML = ""; playerType = 'youtube';
-            video.style.display = 'none'; video.pause(); ytContainer.style.display = 'flex';
+            if(currentVideoURL) { URL.revokeObjectURL(currentVideoURL); currentVideoURL = null; }
+            video.style.display = 'none'; video.pause(); video.src = ""; // Limpa src do video local
+            
+            ytContainer.style.display = 'flex';
             gestureLayer.style.display = 'block'; unlockBtn.style.display = 'block'; ytControlsLocked = true;
             localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`);
             localStorage.setItem('ejoy_mode', 'youtube');
@@ -476,29 +446,47 @@
             if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) apiKeyConfig.style.display='block';
         };
 
+        // --- CARREGAMENTO DE VÍDEO LOCAL OTIMIZADO ---
         document.getElementById('videoInput').onchange = e => {
-            if(e.target.files[0]) {
+            const file = e.target.files[0];
+            if(file) {
                 playerType = 'local';
                 ytContainer.style.display = 'none'; gestureLayer.style.display = 'none'; unlockBtn.style.display = 'none';
-                video.style.display = 'block'; video.src = URL.createObjectURL(e.target.files[0]);
-                localStorage.setItem('ejoy_vidName', e.target.files[0].name);
+                
+                // CORREÇÃO: Limpa memória anterior
+                if (currentVideoURL) { URL.revokeObjectURL(currentVideoURL); }
+                currentVideoURL = URL.createObjectURL(file);
+                
+                video.style.display = 'block'; 
+                video.src = currentVideoURL;
+                video.load(); // Força recarregar
+                
+                localStorage.setItem('ejoy_vidName', file.name);
                 localStorage.setItem('ejoy_mode', 'local');
             }
         };
+        
         document.getElementById('subInput').onchange = e => {
-            if(e.target.files[0]) {
+            const file = e.target.files[0];
+            if(file) {
                 const reader = new FileReader();
                 reader.onload = r => { 
                     try {
                         const parsed = parseSubtitles(r.target.result); 
                         if (parsed.length > 0) {
-                            subtitles = parsed; localStorage.setItem('ejoy_subs', JSON.stringify(subtitles));
-                            alert(`Legenda carregada! (${subtitles.length} linhas)`);
+                            subtitles = parsed; 
+                            // CORREÇÃO: Try-Catch para LocalStorage (evita travar se legenda for gigante)
+                            try {
+                                localStorage.setItem('ejoy_subs', JSON.stringify(subtitles));
+                                alert(`Legenda carregada! (${subtitles.length} linhas)`);
+                            } catch(errStore) {
+                                alert(`Legenda carregada (${subtitles.length} linhas), mas muito grande para salvar na memória. Funcionará até você fechar o app.`);
+                            }
                             resumeStatus.style.display = 'block'; resumeStatus.innerText = "✅ Legenda";
-                        } else { alert("Arquivo vazio."); }
-                    } catch(e) { alert("Erro ao ler."); }
+                        } else { alert("Arquivo vazio ou formato não reconhecido."); }
+                    } catch(e) { alert("Erro ao ler arquivo."); }
                 };
-                reader.readAsText(e.target.files[0]);
+                reader.readAsText(file);
             }
         };
 
@@ -653,30 +641,15 @@
                 const now = getCurrentTimeAny();
                 let idx = subtitles.findIndex(s => s.start > now);
                 if (idx === -1) idx = subtitles.length;
-
-                // LOGICA CORRIGIDA (STRICT JUMP):
-                // Se dir = -1 (Voltar), forçamos índice anterior, sem heurística de "meio da legenda".
-                // Se estamos numa legenda agora, voltar significa ir para a anterior a ela.
                 let currentIdx = subtitles.findIndex(s => now >= s.start && now <= s.end);
-                
                 let targetIdx;
-                if (dir === 1) {
-                    // Avançar: vai para a próxima (idx)
-                    targetIdx = idx;
-                } else {
-                    // Voltar:
-                    if (currentIdx !== -1) {
-                        // Se estamos numa legenda, volta para a anterior
-                        targetIdx = currentIdx - 1;
-                    } else {
-                        // Se estamos no silêncio, 'idx' é a próxima. Volta para a anterior a ela.
-                        targetIdx = idx - 1;
-                    }
+                if (dir === 1) targetIdx = idx;
+                else {
+                    if (currentIdx !== -1) targetIdx = currentIdx - 1;
+                    else targetIdx = idx - 1;
                 }
-
                 if (targetIdx < 0) targetIdx = 0;
                 if (targetIdx >= subtitles.length) targetIdx = subtitles.length - 1;
-                
                 let safeTime = subtitles[targetIdx].start - 0.2;
                 if (safeTime < 0) safeTime = 0;
                 setTimeAnyPlayer(safeTime);

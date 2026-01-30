@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V22.0 - Design)</title>
+    <title>Player Estudo Pro (V23.0 - Favorites & Precision)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN --- */
         :root {
@@ -13,7 +13,7 @@
             --border-color: #333;
             --primary: #3498db;
             --accent: #f1c40f;
-            --yt-color: #e52d27;
+            --fav-color: #e74c3c;
             --text-main: #eee;
             --text-dim: #aaa;
             --radius: 8px;
@@ -39,7 +39,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         
-        /* BARRA DE TOGGLE (DESIGN NOVO) */
         #ui-toggle-bar {
             background: #000; color: #555; text-align: center; padding: 2px 0;
             cursor: pointer; border-bottom: 1px solid #222; z-index: 51;
@@ -66,14 +65,14 @@
         }
         .icon-btn:active { background: #444; }
         .btn-primary { background: var(--primary); border: none; }
-        .btn-primary:active { background: #2980b9; }
+        .btn-fav { color: var(--accent); border-color: var(--accent); }
 
-        /* RESULTADOS BUSCA */
-        #search-results-container {
+        /* RESULTADOS & FAVORITOS */
+        .list-container {
             display: none; background: #181818; border: 1px solid var(--border-color);
             border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
         }
-        #results-header {
+        .list-header {
             background: #252525; padding: 10px 12px; font-size: 0.85rem; font-weight: 600;
             display: flex; justify-content: space-between; align-items: center;
             cursor: pointer; border-bottom: 1px solid var(--border-color); color: var(--text-dim);
@@ -81,15 +80,16 @@
         .toggle-arrow { transition: transform 0.3s; }
         .toggle-arrow.collapsed { transform: rotate(180deg); }
 
-        #search-results-list {
+        .scroll-list {
             display: flex; flex-direction: column; padding: 8px; gap: 8px;
             max-height: 45vh; overflow-y: auto; transition: max-height 0.3s ease;
         }
-        #search-results-list.hidden { max-height: 0; padding: 0; }
+        .scroll-list.hidden { max-height: 0; padding: 0; }
 
         .video-item {
             display: flex; gap: 10px; padding: 8px; background: var(--input-bg); 
             border-radius: 6px; cursor: pointer; align-items: center; transition: background 0.2s;
+            position: relative;
         }
         .video-item:active { background: #3a3a3a; }
         .video-thumb-wrapper { position: relative; width: 110px; height: 62px; flex-shrink: 0; }
@@ -102,6 +102,12 @@
         .video-info { flex-grow: 1; overflow: hidden; }
         .video-title { font-size: 0.85rem; line-height: 1.3; margin-bottom: 4px; color: #fff; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .video-channel { font-size: 0.75rem; color: var(--text-dim); }
+        
+        /* Botão de excluir favorito */
+        .btn-del-fav {
+            background: #c0392b; color: #fff; border: none; padding: 5px 10px;
+            border-radius: 4px; font-size: 0.7rem; margin-left: 5px;
+        }
 
         /* API KEY CONFIG */
         #api-key-config {
@@ -110,7 +116,7 @@
         }
         .api-save-btn { background: #f1c40f; color: #000; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; margin-top: 5px; cursor: pointer; }
 
-        /* BOTÕES DE ARQUIVO & DOWNLOAD */
+        /* ARQUIVOS & BOTÕES */
         .grid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
         
         .file-label {
@@ -129,12 +135,20 @@
             display: flex; align-items: center; justify-content: center; gap: 6px;
             text-decoration: none;
         }
-        .btn-yt-dl { background: #c0392b; } /* Vermelho escuro */
-        .btn-local-dl { background: #2980b9; } /* Azul escuro */
+        .btn-yt-dl { background: #c0392b; } 
+        .btn-local-dl { background: #3498db; } /* Azul Google */
         
         .btn-reset { 
             background: #222; border: 1px solid #444; color: #e74c3c; width: 100%; 
             padding: 10px; border-radius: var(--radius); font-weight: bold; margin-top: 5px;
+        }
+        
+        /* Botão Favoritar Atual */
+        #btn-fav-current {
+            background: #2ecc71; color: #fff; width: 100%; padding: 10px;
+            border-radius: var(--radius); font-weight: bold; margin-bottom: 10px;
+            border: none; display: none; /* Só aparece quando tem vídeo YT */
+            cursor: pointer;
         }
 
         #resume-status { 
@@ -200,9 +214,12 @@
             margin: 6px auto 8px auto; border-radius: 10px; cursor: move;
         }
 
-        /* PALAVRAS & TRADUÇÃO */
+        /* PALAVRAS (MELHORIA TOUCH) */
         .word {
-            font-size: 1em; padding: 2px 0; border-radius: 3px; display: inline; cursor: pointer;
+            font-size: 1em; 
+            /* Aumenta padding vertical para o dedo acertar melhor */
+            padding: 8px 1px; margin: -4px 0;
+            border-radius: 3px; display: inline-block; cursor: pointer;
             box-decoration-break: clone; -webkit-box-decoration-break: clone;
         }
         .word.selected { background-color: var(--accent) !important; color: #000 !important; }
@@ -210,8 +227,8 @@
         .translate-btn {
             display: inline-flex; align-items: center; justify-content: center;
             background: #fff; color: #000; border-radius: 50%;
-            width: 20px; height: 20px; margin-left: 8px; 
-            font-size: 11px; cursor: pointer; vertical-align: middle; opacity: 0.8;
+            width: 22px; height: 22px; margin-left: 8px; 
+            font-size: 12px; cursor: pointer; vertical-align: middle; opacity: 0.9;
         }
 
         #translation-card {
@@ -232,7 +249,6 @@
             text-shadow: 0 0 15px rgba(0,0,0,0.8); z-index: 50;
         }
         
-        /* Landscape adjustments */
         @media (orientation: landscape) {
             #controls-wrapper { display: none; }
             #ui-toggle-bar { display: none; }
@@ -246,6 +262,7 @@
         <div class="control-group">
             <input type="text" id="yt-search-input" class="modern-input" placeholder="YouTube (Link ou Busca)...">
             <button class="icon-btn btn-primary" onclick="initSearch()">🔍</button>
+            <button class="icon-btn btn-fav" onclick="toggleFavorites()" title="Meus Favoritos">⭐</button>
             <button class="icon-btn" onclick="openApiConfig()">🔑</button>
         </div>
         
@@ -256,13 +273,23 @@
             <button class="api-save-btn" onclick="document.getElementById('api-key-config').style.display='none'" style="background:#444; color:#fff;">Fechar</button>
         </div>
 
-        <div id="search-results-container">
-            <div id="results-header" onclick="toggleResults()">
+        <div id="search-results-container" class="list-container">
+            <div class="list-header" onclick="toggleContainer('search-results-list', 'results-arrow')">
                 <span>📺 Resultados</span>
                 <span class="toggle-arrow" id="results-arrow">▼</span>
             </div>
-            <div id="search-results-list"></div>
+            <div id="search-results-list" class="scroll-list"></div>
         </div>
+
+        <div id="favorites-container" class="list-container">
+            <div class="list-header" onclick="toggleContainer('favorites-list', 'fav-arrow')">
+                <span>⭐ Meus Favoritos</span>
+                <span class="toggle-arrow" id="fav-arrow">▼</span>
+            </div>
+            <div id="favorites-list" class="scroll-list"></div>
+        </div>
+
+        <button id="btn-fav-current" onclick="addCurrentToFavorites()">❤️ Favoritar Vídeo Atual</button>
 
         <div class="grid-row">
             <label class="file-label">
@@ -279,8 +306,8 @@
             <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">
                 ⬇️ YouTube (DownSub)
             </button>
-            <button class="btn-external btn-local-dl" onclick="openExternalOpenSubs()">
-                🔎 Local (OpenSub)
+            <button class="btn-external btn-local-dl" onclick="searchLocalSubsOnGoogle()">
+                🔍 Buscar Legenda Local (Google)
             </button>
         </div>
 
@@ -326,18 +353,88 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --- FUNÇÕES DE LINKS EXTERNOS ---
+        // --- GERENCIADOR DE FAVORITOS (NOVO) ---
+        let favorites = JSON.parse(localStorage.getItem('ejoy_favs')) || [];
+        let currentPlayingYT = null; // Guarda info do video atual {id, title, thumb}
+
+        function toggleFavorites() {
+            const container = document.getElementById('favorites-container');
+            if (container.style.display === 'block') {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'block';
+                renderFavorites();
+            }
+        }
+
+        function renderFavorites() {
+            const list = document.getElementById('favorites-list');
+            list.innerHTML = "";
+            if (favorites.length === 0) {
+                list.innerHTML = "<div style='padding:10px; text-align:center; color:#777;'>Sem favoritos ainda.</div>";
+                return;
+            }
+            favorites.forEach((fav, index) => {
+                const div = document.createElement('div');
+                div.className = 'video-item';
+                div.innerHTML = `
+                    <div class="video-thumb-wrapper">
+                        <img src="${fav.thumb}" class="video-thumb">
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">${fav.title}</div>
+                    </div>
+                    <button class="btn-del-fav" onclick="removeFavorite(event, ${index})">🗑️</button>
+                `;
+                // Clique no item carrega o video
+                div.onclick = (e) => {
+                    if(e.target.classList.contains('btn-del-fav')) return;
+                    loadYouTube(fav.id, fav.title, fav.thumb);
+                };
+                list.appendChild(div);
+            });
+        }
+
+        function addCurrentToFavorites() {
+            if (!currentPlayingYT) return;
+            // Evita duplicatas
+            if (favorites.some(f => f.id === currentPlayingYT.id)) {
+                alert("Já está nos favoritos!");
+                return;
+            }
+            favorites.push(currentPlayingYT);
+            localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
+            alert("Adicionado aos Favoritos!");
+            renderFavorites();
+        }
+
+        function removeFavorite(e, index) {
+            e.stopPropagation();
+            if(confirm("Remover dos favoritos?")) {
+                favorites.splice(index, 1);
+                localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
+                renderFavorites();
+            }
+        }
+
+        // --- LINKS EXTERNOS ---
         function openExternalDownSub() {
             const url = localStorage.getItem('ejoy_ytUrl');
             if(playerType !== 'youtube' || !url) { alert("Carregue um vídeo do YouTube primeiro."); return; }
             window.open(`https://downsub.com/?url=${encodeURIComponent(url)}`, '_blank');
         }
 
-        function openExternalOpenSubs() {
+        // CORREÇÃO: Busca genérica no Google
+        function searchLocalSubsOnGoogle() {
             const filename = localStorage.getItem('ejoy_vidName');
             if(playerType !== 'local' || !filename) { alert("Carregue um vídeo local primeiro."); return; }
-            let cleanName = filename.replace(/\.(mp4|mkv|avi|mov)$/i, '').replace(/[._]/g, ' ');
-            window.open(`https://www.opensubtitles.org/en/search/sublanguageid-por,pob/q-${encodeURIComponent(cleanName)}`, '_blank');
+            
+            // Remove extensões comuns para limpar o nome
+            let cleanName = filename.replace(/\.(mp4|mkv|avi|mov)$/i, '');
+            // Cria query de busca
+            let query = `${cleanName} legenda português download`;
+            
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
         }
 
         // --- LÓGICA PRINCIPAL ---
@@ -346,9 +443,9 @@
         const gestureLayer = document.getElementById('gesture-layer');
         const unlockBtn = document.getElementById('unlock-yt-btn');
         const ytInput = document.getElementById('yt-search-input');
+        
         const resultsContainer = document.getElementById('search-results-container');
         const resultsList = document.getElementById('search-results-list');
-        const resultsArrow = document.getElementById('results-arrow');
         const apiKeyConfig = document.getElementById('api-key-config');
         const subContent = document.getElementById('subtitle-content');
         const subBox = document.getElementById('subtitle-box');
@@ -361,24 +458,29 @@
         const gestureIcon = document.getElementById('gesture-feedback');
         const textColorInput = document.getElementById('textColor');
         const bgColorInput = document.getElementById('bgColor');
+        const btnFavCurrent = document.getElementById('btn-fav-current');
 
         let subtitles = [];
-        let isSelecting = false;
-        let selectedWords = new Set();
         let lastRenderedText = "";
         
         let playerType = 'local';
         let ytPlayer = null;
         let ytTimer = null;
         let ytControlsLocked = true;
+        
+        // DRAG & SELECTION VARS
         let isDragging = false;
         let dragStartX = 0; let dragStartY = 0;
         let initialTop = 0; let initialLeft = 0;
+        
+        // SELECTION LOGIC (PRECISE)
+        let isSelecting = false;
+        let selectionStartIndex = -1; // Onde o dedo tocou primeiro
+
         let YOUTUBE_API_KEY = localStorage.getItem('ejoy_api_key') || "";
         let nextPageToken = "";
         let currentQuery = "";
         let isFetching = false;
-        
         let currentVideoURL = null; 
         let currentFontSize = 1.2;
 
@@ -400,6 +502,16 @@
         }
         function openApiConfig() { apiKeyConfig.style.display = 'block'; document.getElementById('api-key-input').value = YOUTUBE_API_KEY; }
 
+        function toggleContainer(listId, arrowId) {
+            const list = document.getElementById(listId);
+            const arrow = document.getElementById(arrowId);
+            if (list.classList.contains('hidden')) {
+                list.classList.remove('hidden'); arrow.classList.remove('collapsed');
+            } else {
+                list.classList.add('hidden'); arrow.classList.add('collapsed');
+            }
+        }
+
         // --- BUSCA YOUTUBE ---
         async function initSearch() {
             const query = ytInput.value.trim();
@@ -407,7 +519,7 @@
             if (!YOUTUBE_API_KEY) { openApiConfig(); return; }
             if (!query) return;
             currentQuery = query; nextPageToken = ""; resultsList.innerHTML = "";
-            resultsContainer.style.display = 'block'; resultsList.classList.remove('hidden'); resultsArrow.classList.remove('collapsed');
+            resultsContainer.style.display = 'block'; resultsList.classList.remove('hidden'); 
             await fetchVideos();
         }
 
@@ -434,7 +546,9 @@
                     const duration = videosData[vidId] || "";
                     const div = document.createElement('div'); div.className = 'video-item';
                     div.innerHTML = `<div class="video-thumb-wrapper"><img src="${thumb}" class="video-thumb">${duration ? `<span class="video-duration">${duration}</span>` : ''}</div><div class="video-info"><div class="video-title">${title}</div><div class="video-channel">${channel}</div></div>`;
-                    div.onclick = () => { selectSearchedVideo(vidId); toggleResults(true); };
+                    div.onclick = () => { 
+                        loadYouTube(vidId, title, thumb); 
+                    };
                     resultsList.appendChild(div);
                 });
             } catch (err) { loader.innerText = "Erro de conexão"; } finally { isFetching = false; }
@@ -449,14 +563,11 @@
         }
 
         resultsList.addEventListener('scroll', () => { if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50 && nextPageToken && !isFetching) fetchVideos(); });
-        function toggleResults(forceCollapse = false) {
-            if (forceCollapse) { resultsList.classList.add('hidden'); resultsArrow.classList.add('collapsed'); }
-            else { resultsList.classList.toggle('hidden'); resultsArrow.classList.toggle('collapsed'); }
-        }
-        function selectSearchedVideo(vidId) { ytInput.value = `https://www.youtube.com/watch?v=${vidId}`; loadYouTube(vidId); }
+        
         function loadYouTubeFromInput() {
             const url = ytInput.value; const videoId = extractVideoID(url);
-            if(!videoId) { alert("Link inválido."); return; } loadYouTube(videoId);
+            if(!videoId) { alert("Link inválido."); return; } 
+            loadYouTube(videoId, "Vídeo via Link", "");
         }
 
         function resetApp() {
@@ -467,16 +578,26 @@
         }
         
         function onYouTubeIframeAPIReady() {}
-        function loadYouTube(videoId) {
+        
+        // MODIFICADO: Aceita Title/Thumb para favoritos
+        function loadYouTube(videoId, title, thumb) {
             subtitles = []; subContent.innerHTML = ""; playerType = 'youtube';
             if(currentVideoURL) { URL.revokeObjectURL(currentVideoURL); currentVideoURL = null; }
             video.removeAttribute('src'); video.load(); video.style.display = 'none';
             ytContainer.style.display = 'flex'; gestureLayer.style.display = 'block'; unlockBtn.style.display = 'block'; ytControlsLocked = true;
-            localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`); localStorage.setItem('ejoy_mode', 'youtube');
+            
+            // Salva dados atuais
+            currentPlayingYT = { id: videoId, title: title || "Vídeo YouTube", thumb: thumb || "" };
+            btnFavCurrent.style.display = 'block'; // Mostra botão favoritar
+
+            localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`); 
+            localStorage.setItem('ejoy_mode', 'youtube');
+            
             if(ytPlayer) { ytPlayer.loadVideoById(videoId); } 
             else { ytPlayer = new YT.Player('yt-player', { height: '100%', width: '100%', videoId: videoId, playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, }); }
             startYTSync();
         }
+
         function toggleYtControls() {
             const iframe = document.querySelector('iframe');
             if(ytControlsLocked) { gestureLayer.style.display = 'none'; iframe.style.pointerEvents = 'auto'; unlockBtn.innerText = "🔒 Gestos"; ytControlsLocked = false; }
@@ -498,15 +619,15 @@
         window.onload = () => {
             const savedSubs = localStorage.getItem('ejoy_subs');
             if (savedSubs) try { subtitles = JSON.parse(savedSubs); resumeStatus.style.display='block'; resumeStatus.innerText='✅ Legenda'; } catch(e){}
-            const lastMode = localStorage.getItem('ejoy_mode');
-            if(lastMode === 'youtube') ytInput.value = localStorage.getItem('ejoy_ytUrl') || "";
             if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) document.getElementById('api-key-config').style.display='block';
+            renderFavorites();
         };
 
         document.getElementById('videoInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
                 playerType = 'local'; ytContainer.style.display = 'none'; gestureLayer.style.display = 'none'; unlockBtn.style.display = 'none';
+                btnFavCurrent.style.display = 'none';
                 if (currentVideoURL) { URL.revokeObjectURL(currentVideoURL); }
                 video.removeAttribute('src'); video.load(); 
                 currentVideoURL = URL.createObjectURL(file); video.src = currentVideoURL; video.style.display = 'block'; 
@@ -559,9 +680,11 @@
             });
             const btn = document.createElement('span');
             btn.className = 'translate-btn'; btn.innerHTML = '🌐';
+            
+            // CORREÇÃO: Tradução botão (tap)
             btn.addEventListener('touchstart', (e) => {
                 e.stopPropagation(); e.preventDefault(); pauseAnyPlayer();
-                isSelecting = false; selectedWords.clear(); document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
+                isSelecting = false; document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
                 translateText(text, text);
             });
             btn.onclick = (e) => { e.stopPropagation(); pauseAnyPlayer(); translateText(text, text); };
@@ -584,6 +707,7 @@
             return 0;
         }
 
+        // DRAG HANDLER
         dragHandle.addEventListener('touchstart', dragStart, {passive: false});
         dragHandle.addEventListener('touchmove', dragMove, {passive: false});
         dragHandle.addEventListener('touchend', dragEnd);
@@ -610,27 +734,65 @@
             subBox.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.7)`;
         });
 
+        // --- SELEÇÃO DE TEXTO (RANGE PRECISO) ---
         subContent.addEventListener('touchstart', (e) => {
             if(e.target.classList.contains('translate-btn')) return;
-            isSelecting = true; selectedWords.clear(); transCard.style.display = 'none';
-            pauseAnyPlayer(); handleSelection(e.touches[0]);
+            // Inicia seleção
+            const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            if (el && el.classList.contains('word')) {
+                isSelecting = true;
+                pauseAnyPlayer();
+                selectionStartIndex = parseInt(el.dataset.index);
+                transCard.style.display = 'none';
+                updateSelectionRange(selectionStartIndex);
+            }
         }, {passive: false});
+
         subContent.addEventListener('touchmove', (e) => {
-            if (!isSelecting) return; e.preventDefault(); handleSelection(e.touches[0]);
+            if (!isSelecting) return; 
+            e.preventDefault(); 
+            const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            if (el && el.classList.contains('word')) {
+                const currentIndex = parseInt(el.dataset.index);
+                updateSelectionRange(currentIndex);
+            }
         }, {passive: false});
+
         subContent.addEventListener('touchend', () => {
-            isSelecting = false; if (selectedWords.size > 0) translateSelection();
+            if(isSelecting) {
+                isSelecting = false;
+                translateSelection();
+            }
         });
-        function handleSelection(touch) {
-            const el = document.elementFromPoint(touch.clientX, touch.clientY);
-            if (el && el.classList.contains('word')) { el.classList.add('selected'); selectedWords.add(el); }
+
+        function updateSelectionRange(endIndex) {
+            // Limpa tudo
+            document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
+            
+            // Define min e max para o loop
+            const start = Math.min(selectionStartIndex, endIndex);
+            const end = Math.max(selectionStartIndex, endIndex);
+            
+            // Seleciona range
+            const words = subContent.querySelectorAll('.word');
+            for(let i=start; i<=end; i++) {
+                if(words[i]) words[i].classList.add('selected');
+            }
         }
+
         function translateSelection() {
-            const arr = Array.from(selectedWords).sort((a,b) => a.dataset.index - b.dataset.index);
-            const txt = arr.map(el => el.dataset.raw).join(' ');
-            translateText(txt, arr.map(el => el.textContent).join(''));
-            setTimeout(() => document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected')), 1000);
+            const selected = document.querySelectorAll('.word.selected');
+            if(selected.length === 0) return;
+            const wordsArray = Array.from(selected);
+            const txt = wordsArray.map(el => el.dataset.raw).join(' ');
+            const display = wordsArray.map(el => el.textContent).join('');
+            translateText(txt, display);
+            // Delay pra limpar
+            setTimeout(() => {
+                selected.forEach(el => el.classList.remove('selected'));
+            }, 1500);
         }
+
         async function translateText(src, dsp) {
             transCard.style.display = 'block'; transOrig.textContent = dsp; transRes.className = 'loading'; transRes.textContent = '...';
             try {

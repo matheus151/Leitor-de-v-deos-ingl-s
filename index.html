@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V17.0 - Lite)</title>
+    <title>Player Estudo Pro (V18.0 - API Fix)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -122,7 +122,7 @@
             align-items: center; justify-content: center; background: #000; 
             overflow: hidden; width: 100%; height: 100%;
         }
-        /* OTIMIZAÇÃO: preload metadata para não travar o carregamento */
+        /* OTIMIZAÇÃO: preload metadata */
         video { width: 100%; max-height: 100%; object-fit: contain; display: block; }
         
         #yt-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; z-index: 1; }
@@ -303,7 +303,6 @@
         let currentQuery = "";
         let isFetching = false;
         
-        // Memória de Vídeo Local (CORREÇÃO V17)
         let currentVideoURL = null; 
         let currentFontSize = 1.2;
 
@@ -340,7 +339,7 @@
             if(key) { YOUTUBE_API_KEY = key; localStorage.setItem('ejoy_api_key', key); apiKeyConfig.style.display = 'none'; alert("Chave salva!"); }
         }
 
-        // --- BUSCA YOUTUBE COM DURAÇÃO ---
+        // --- BUSCA YOUTUBE ---
         async function initSearch() {
             const query = ytInput.value.trim();
             if (query.includes('youtube.com') || query.includes('youtu.be')) { loadYouTubeFromInput(); return; }
@@ -401,8 +400,16 @@
         }
 
         function resetApp() {
+            // CORREÇÃO V18: NÃO limpar a API Key
             if(currentVideoURL) URL.revokeObjectURL(currentVideoURL);
-            localStorage.clear(); 
+            
+            // Remove apenas dados da sessão
+            localStorage.removeItem('ejoy_subs');
+            localStorage.removeItem('ejoy_vidName');
+            localStorage.removeItem('ejoy_time');
+            localStorage.removeItem('ejoy_ytUrl');
+            localStorage.removeItem('ejoy_mode');
+            
             location.reload(); 
         }
         
@@ -446,17 +453,16 @@
             if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) apiKeyConfig.style.display='block';
         };
 
-        // --- CARREGAMENTO DE VÍDEO LOCAL OTIMIZADO (V17) ---
+        // --- CARREGAMENTO DE VÍDEO LOCAL ---
         document.getElementById('videoInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
                 playerType = 'local';
                 ytContainer.style.display = 'none'; gestureLayer.style.display = 'none'; unlockBtn.style.display = 'none';
                 
-                // OTIMIZAÇÃO V17: Limpeza profunda antes de carregar novo
                 if (currentVideoURL) { URL.revokeObjectURL(currentVideoURL); }
                 video.removeAttribute('src'); 
-                video.load(); // Reseta o player nativo para limpar buffer
+                video.load(); 
                 
                 currentVideoURL = URL.createObjectURL(file);
                 video.src = currentVideoURL;
@@ -609,7 +615,6 @@
             } catch (e) { transRes.textContent = "Erro"; }
         }
 
-        // --- GESTOS OTIMIZADOS (V17 FIX) ---
         const gestureZone = document.getElementById('gesture-layer'); 
         const gestureZoneLocal = document.getElementById('video-wrapper');
 
@@ -626,14 +631,9 @@
                 const duration = new Date().getTime() - tStartTime;
                 const diff = tEnd - tStart;
                 
-                // GESTO CURTO (TAP)
                 if (duration < 200 && Math.abs(diff) < 10) {
-                    // OTIMIZAÇÃO: Se for local, IGNORA o tap e deixa o controle nativo cuidar do Pause.
-                    if (mode === 'yt') {
-                        togglePlayAny();
-                    }
+                    if (mode === 'yt') { togglePlayAny(); }
                 } 
-                // GESTO LONGO (SWIPE)
                 else if (Math.abs(diff) > 30) {
                     if (diff < 0) { showFeedback('⏪'); jumpSubtitle(-1); } 
                     else { showFeedback('⏩'); jumpSubtitle(1); }

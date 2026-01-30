@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V19.0 - AI Generation)</title>
+    <title>Player Estudo Pro (V20.0 - YT Magic)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -31,7 +31,7 @@
         }
         #ui-toggle-bar:hover { background: #222; color: #fff; }
 
-        /* INPUTS E BOTÕES */
+        /* BUSCA YOUTUBE */
         .yt-search-group { display: flex; gap: 5px; margin-bottom: 8px; }
         .yt-input {
             background: #333; border: 1px solid #444; color: #fff; padding: 8px;
@@ -42,15 +42,6 @@
             border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1.2rem;
         }
         .search-trigger-btn { background: #00a8ff; } 
-
-        /* CONFIGURAÇÃO DE CHAVES (AGORA DUPLA) */
-        .api-config-box {
-            display: none; padding: 10px; background: #2c2c2c; border: 1px solid #444;
-            border-radius: 6px; margin-bottom: 10px; font-size: 0.8rem;
-        }
-        .api-row { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 8px; }
-        .api-label { display: block; color: #aaa; margin-bottom: 4px; font-weight: bold;}
-        .save-btn { background: #444; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; margin-top: 4px; cursor: pointer; }
 
         /* RESULTADOS BUSCA */
         #search-results-container {
@@ -88,6 +79,12 @@
         .video-channel { font-size: 0.7rem; color: #aaa; }
         .loading-more { text-align: center; color: #aaa; padding: 10px; font-style: italic; font-size: 0.8rem; }
 
+        /* API KEY */
+        #api-key-config {
+            display: none; padding: 10px; background: #332b00; border: 1px solid #ffcc00;
+            border-radius: 6px; margin-bottom: 10px; font-size: 0.8rem;
+        }
+
         /* ARQUIVOS */
         #file-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
         .custom-file-upload {
@@ -96,16 +93,17 @@
             flex-grow: 1; text-align: center; font-weight: 600; font-size: 0.85rem;
         }
         
-        /* BOTÕES DE AÇÃO */
+        /* AÇÕES */
         .btn-clear { background: #c0392b; color: #fff; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; margin-bottom: 8px; cursor: pointer; }
         
-        /* BOTÃO MÁGICO COM LOADING */
-        .btn-magic-sub { 
-            background: #8e44ad; /* Roxo para AI */
+        /* BOTÃO MÁGICO YOUTUBE (NOVO) */
+        .btn-magic-yt { 
+            background: #e67e22; /* Laranja */
             color: #fff; width: 100%; margin-bottom: 8px; padding: 12px; 
-            font-size: 0.9rem; border: 1px solid #9b59b6; cursor: pointer; position: relative;
+            font-size: 0.9rem; border: 1px solid #d35400; cursor: pointer; position: relative;
+            font-weight: bold;
         }
-        .btn-magic-sub:disabled { background: #555; border-color: #666; color: #aaa; }
+        .btn-magic-yt:disabled { background: #555; border-color: #666; color: #aaa; }
         .spinner {
             display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3);
             border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite;
@@ -214,19 +212,14 @@
         <div class="yt-search-group">
             <input type="text" id="yt-search-input" class="yt-input" placeholder="Pesquisar YouTube...">
             <button class="yt-btn search-trigger-btn" onclick="initSearch()">🔍</button>
-            <button class="yt-btn" onclick="openApiConfig()">🔑</button> </div>
+            <button class="yt-btn" onclick="openApiConfig()">🔑</button>
+        </div>
         
-        <div id="api-config-box" class="api-config-box">
-            <div class="api-row">
-                <span class="api-label">1. YouTube API Key (Para Busca):</span>
-                <input type="text" id="yt-api-input" class="yt-input" placeholder="AIzaSy...">
-            </div>
-            <div class="api-row">
-                <span class="api-label">2. OpenAI API Key (Para Legenda AI):</span>
-                <input type="text" id="openai-api-input" class="yt-input" placeholder="sk-...">
-            </div>
-            <button class="save-btn" onclick="saveAllKeys()">💾 Salvar Chaves</button>
-            <button class="save-btn" onclick="closeApiConfig()" style="background:#555;">Fechar</button>
+        <div id="api-key-config">
+            <p style="margin:0 0 5px 0;">⚠️ Insira sua <b>YouTube API Key</b> (para buscas):</p>
+            <input type="text" id="api-key-input" class="yt-input" placeholder="Cole API Key aqui">
+            <button onclick="saveApiKey()" style="margin-top:5px; padding:5px;">Salvar Chave</button>
+            <button onclick="closeApiConfig()" style="margin-top:5px; padding:5px; background:#555;">Fechar</button>
         </div>
 
         <div id="search-results-container">
@@ -237,9 +230,9 @@
             <div id="search-results-list"></div>
         </div>
 
-        <button id="ai-sub-btn" class="btn-magic-sub" onclick="generateSubtitleAI()">
-            <span class="spinner" id="ai-spinner"></span>
-            <span id="ai-btn-text">✨ Gerar Legenda com AI (OpenAI)</span>
+        <button id="yt-magic-btn" class="btn-magic-yt" onclick="extractYouTubeSubs()">
+            <span class="spinner" id="yt-spinner"></span>
+            <span id="yt-btn-text">🪄 Extrair Legenda do YouTube (Automático)</span>
         </button>
 
         <div id="file-controls">
@@ -261,7 +254,6 @@
                 <label class="color-picker-label">Bg <input type="color" id="bgColor" value="#000000"></label>
             </div>
         </div>
-        <a href="https://downsub.com/" target="_blank" class="btn-link">Baixar Legenda do YouTube (DownSub)</a>
     </div>
 
     <div id="ui-toggle-bar" onclick="toggleMainUI()">🔼</div>
@@ -288,82 +280,105 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --- CHAVES API ---
+        // --- CHAVE YOUTUBE ---
         let YOUTUBE_API_KEY = localStorage.getItem('ejoy_yt_key') || "";
-        let OPENAI_API_KEY = localStorage.getItem('ejoy_openai_key') || "";
 
-        function openApiConfig() { document.getElementById('api-config-box').style.display = 'block'; document.getElementById('yt-api-input').value = YOUTUBE_API_KEY; document.getElementById('openai-api-input').value = OPENAI_API_KEY; }
-        function closeApiConfig() { document.getElementById('api-config-box').style.display = 'none'; }
-        function saveAllKeys() {
-            const yt = document.getElementById('yt-api-input').value.trim();
-            const openai = document.getElementById('openai-api-input').value.trim();
-            if(yt) { YOUTUBE_API_KEY = yt; localStorage.setItem('ejoy_yt_key', yt); }
-            if(openai) { OPENAI_API_KEY = openai; localStorage.setItem('ejoy_openai_key', openai); }
-            alert("Chaves Salvas com Sucesso!"); closeApiConfig();
+        function openApiConfig() { document.getElementById('api-key-config').style.display = 'block'; document.getElementById('api-key-input').value = YOUTUBE_API_KEY; }
+        function closeApiConfig() { document.getElementById('api-key-config').style.display = 'none'; }
+        function saveApiKey() {
+            const key = document.getElementById('api-key-input').value.trim();
+            if(key) { YOUTUBE_API_KEY = key; localStorage.setItem('ejoy_yt_key', key); alert("Chave Salva!"); closeApiConfig(); }
         }
 
-        // --- GERAÇÃO AI (OPENAI WHISPER) ---
-        async function generateSubtitleAI() {
-            // Verifica Chave
-            if (!OPENAI_API_KEY) { alert("Configure sua OpenAI API Key no botão 🔑 acima primeiro."); openApiConfig(); return; }
+        // --- MÁGICA DE LEGENDA YOUTUBE (EXTRAÇÃO VIA PROXY) ---
+        async function extractYouTubeSubs() {
+            if (playerType !== 'youtube') { alert("Carregue um vídeo do YouTube primeiro!"); return; }
             
-            // Verifica se é vídeo local
-            if (playerType !== 'local' || !document.getElementById('videoInput').files[0]) {
-                alert("A geração automática só funciona com VÍDEOS LOCAIS (.mp4) carregados do seu celular.\n\nPara YouTube, use o link do DownSub abaixo.");
-                return;
-            }
+            const url = localStorage.getItem('ejoy_ytUrl');
+            const videoId = extractVideoID(url);
+            if (!videoId) { alert("ID do vídeo não encontrado."); return; }
 
-            const file = document.getElementById('videoInput').files[0];
-            
-            // Verifica tamanho (Limite Whisper API ~25MB)
-            if (file.size > 26 * 1024 * 1024) {
-                alert(`⚠️ Arquivo muito grande (${(file.size/1024/1024).toFixed(1)}MB).\n\nA API da OpenAI aceita máx 25MB.\nPor favor, use um vídeo menor ou use a opção de baixar legenda externa.`);
-                return;
-            }
-
-            // Confirmação
-            if(!confirm(`Deseja enviar "${file.name}" para a OpenAI gerar a legenda?\n\nIsso pode levar alguns segundos/minutos dependendo da internet.`)) return;
-
-            // UI Loading
-            const btn = document.getElementById('ai-sub-btn');
-            const spinner = document.getElementById('ai-spinner');
-            const txt = document.getElementById('ai-btn-text');
-            btn.disabled = true; spinner.style.display = 'inline-block'; txt.innerText = "Enviando e Transcrevendo...";
+            // UI
+            const btn = document.getElementById('yt-magic-btn');
+            const spinner = document.getElementById('yt-spinner');
+            const txt = document.getElementById('yt-btn-text');
+            btn.disabled = true; spinner.style.display = 'inline-block'; txt.innerText = "Buscando legendas...";
 
             try {
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("model", "whisper-1");
-                formData.append("response_format", "srt");
+                // 1. Usa um Proxy Público (AllOrigins) para ler o HTML da página do vídeo sem baixar o vídeo
+                // Isso contorna o CORS e pega o JSON de configuração onde as legendas ficam escondidas
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}`;
+                const response = await fetch(proxyUrl);
+                const data = await response.json();
+                const html = data.contents;
 
-                const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${OPENAI_API_KEY}` },
-                    body: formData
-                });
+                // 2. Procura a lista de legendas (captionTracks) no HTML usando Regex
+                // O YouTube guarda isso dentro de um objeto JSON gigante no código fonte
+                const regex = /"captionTracks":(\[.*?\])/;
+                const match = regex.exec(html);
 
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error?.message || "Erro desconhecido na API");
+                if (!match) {
+                    throw new Error("Nenhuma legenda automática encontrada neste vídeo. O YouTube pode não ter gerado ainda.");
                 }
 
-                const srtText = await response.text();
+                const tracks = JSON.parse(match[1]);
+                console.log("Legendas encontradas:", tracks);
+
+                // 3. Tenta achar inglês ou português, ou pega a primeira (que geralmente é a Auto-Generated)
+                let selectedTrack = tracks.find(t => t.languageCode === 'en') || tracks.find(t => t.languageCode === 'pt') || tracks[0];
                 
-                // Sucesso!
-                subtitles = parseSubtitles(srtText);
-                try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
+                // 4. Baixa o XML da legenda (via proxy novamente para não dar erro)
+                const subUrl = selectedTrack.baseUrl;
+                const subProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(subUrl)}`;
+                const subResponse = await fetch(subProxyUrl);
+                const subData = await subResponse.json();
+                const xmlText = subData.contents;
+
+                // 5. Parseia o XML para nosso formato
+                subtitles = parseYouTubeXML(xmlText);
                 
-                alert(`🎉 Sucesso! Legenda gerada com ${subtitles.length} linhas.`);
-                resumeStatus.style.display = 'block'; resumeStatus.innerText = "✅ Legenda AI Ativa";
-                
-            } catch (error) {
-                alert("Erro na Geração AI:\n" + error.message);
+                if(subtitles.length > 0) {
+                    try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
+                    alert(`🪄 Sucesso! Extraída legenda: ${selectedTrack.name.simpleText} (${selectedTrack.languageCode})`);
+                    resumeStatus.style.display = 'block'; resumeStatus.innerText = "✅ Legenda YT Ativa";
+                } else {
+                    throw new Error("Arquivo de legenda vazio.");
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao extrair legenda: " + err.message + "\n\nTente usar o botão 'Baixar Legenda' (DownSub) como alternativa.");
             } finally {
-                btn.disabled = false; spinner.style.display = 'none'; txt.innerText = "✨ Gerar Legenda com AI (OpenAI)";
+                btn.disabled = false; spinner.style.display = 'none'; txt.innerText = "🪄 Extrair Legenda do YouTube (Automático)";
             }
         }
 
-        // --- VARIÁVEIS ---
+        // Parse específico para o XML do YouTube
+        function parseYouTubeXML(xmlString) {
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(xmlString, "text/xml");
+            const texts = xml.getElementsByTagName('text');
+            const result = [];
+            
+            for (let i = 0; i < texts.length; i++) {
+                const node = texts[i];
+                const start = parseFloat(node.getAttribute('start'));
+                const dur = parseFloat(node.getAttribute('dur') || "0");
+                // Limpa o texto (remove quebras e caracteres estranhos do HTML)
+                const text = node.textContent.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\n/g, ' ').trim();
+                
+                if (text) {
+                    result.push({
+                        start: start,
+                        end: start + dur,
+                        text: text
+                    });
+                }
+            }
+            return result;
+        }
+
+        // --- VARIÁVEIS GLOBAIS ---
         const video = document.getElementById('mainVideo');
         const ytContainer = document.getElementById('yt-container');
         const gestureLayer = document.getElementById('gesture-layer');
@@ -372,6 +387,7 @@
         const resultsContainer = document.getElementById('search-results-container');
         const resultsList = document.getElementById('search-results-list');
         const resultsArrow = document.getElementById('results-arrow');
+        const apiKeyConfig = document.getElementById('api-key-config');
         const subContent = document.getElementById('subtitle-content');
         const subBox = document.getElementById('subtitle-box');
         const subContainer = document.getElementById('subtitle-container');
@@ -388,6 +404,7 @@
         let isSelecting = false;
         let selectedWords = new Set();
         let lastRenderedText = "";
+        
         let playerType = 'local';
         let ytPlayer = null;
         let ytTimer = null;
@@ -401,6 +418,7 @@
         let currentVideoURL = null; 
         let currentFontSize = 1.2;
 
+        // --- FUNÇÕES DE UI ---
         function changeFontSize(delta) {
             currentFontSize += delta; if (currentFontSize < 0.5) currentFontSize = 0.5; if (currentFontSize > 3.0) currentFontSize = 3.0;
             subBox.style.fontSize = currentFontSize + 'rem';
@@ -416,7 +434,7 @@
         async function initSearch() {
             const query = ytInput.value.trim();
             if (query.includes('youtube.com') || query.includes('youtu.be')) { loadYouTubeFromInput(); return; }
-            if (!YOUTUBE_API_KEY) { alert("Insira a YouTube API Key em 🔑"); openApiConfig(); return; }
+            if (!YOUTUBE_API_KEY) { openApiConfig(); return; }
             if (!query) return;
             currentQuery = query; nextPageToken = ""; resultsList.innerHTML = "";
             resultsContainer.style.display = 'block'; resultsList.classList.remove('hidden'); resultsArrow.classList.remove('collapsed');
@@ -474,7 +492,7 @@
 
         function resetApp() {
             if(currentVideoURL) URL.revokeObjectURL(currentVideoURL);
-            // CORREÇÃO: Limpa apenas dados da sessão, mantem chaves
+            // CORREÇÃO: Limpa apenas dados da sessão
             localStorage.removeItem('ejoy_subs');
             localStorage.removeItem('ejoy_vidName');
             localStorage.removeItem('ejoy_time');
@@ -517,34 +535,34 @@
             if (savedSubs) try { subtitles = JSON.parse(savedSubs); resumeStatus.style.display='block'; resumeStatus.innerText='✅ Legenda'; } catch(e){}
             const lastMode = localStorage.getItem('ejoy_mode');
             if(lastMode === 'youtube') ytInput.value = localStorage.getItem('ejoy_ytUrl') || "";
+            if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) document.getElementById('api-key-config').style.display='block';
         };
 
+        // --- VÍDEO LOCAL ---
         document.getElementById('videoInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
-                playerType = 'local';
-                ytContainer.style.display = 'none'; gestureLayer.style.display = 'none'; unlockBtn.style.display = 'none';
+                playerType = 'local'; ytContainer.style.display = 'none'; gestureLayer.style.display = 'none'; unlockBtn.style.display = 'none';
                 if (currentVideoURL) { URL.revokeObjectURL(currentVideoURL); }
                 video.removeAttribute('src'); video.load(); 
                 currentVideoURL = URL.createObjectURL(file); video.src = currentVideoURL; video.style.display = 'block'; 
                 localStorage.setItem('ejoy_vidName', file.name); localStorage.setItem('ejoy_mode', 'local');
             }
         };
-        
         document.getElementById('subInput').onchange = e => {
-            const file = e.target.files[0];
-            if(file) {
+            if(e.target.files[0]) {
                 const reader = new FileReader();
                 reader.onload = r => { 
                     try {
                         const parsed = parseSubtitles(r.target.result); 
                         if (parsed.length > 0) {
-                            subtitles = parsed; try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
+                            subtitles = parsed; 
+                            try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
                             resumeStatus.style.display = 'block'; resumeStatus.innerText = "✅ Legenda";
                         } else { alert("Arquivo vazio."); }
                     } catch(e) { alert("Erro ao ler."); }
                 };
-                reader.readAsText(file);
+                reader.readAsText(e.target.files[0]);
             }
         };
 

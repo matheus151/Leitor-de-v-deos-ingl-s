@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V20.0 - YT Magic)</title>
+    <title>Player Estudo Pro (V21.0 - Robust)</title>
     <style>
         /* --- GERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -96,12 +96,10 @@
         /* AÇÕES */
         .btn-clear { background: #c0392b; color: #fff; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; margin-bottom: 8px; cursor: pointer; }
         
-        /* BOTÃO MÁGICO YOUTUBE (NOVO) */
+        /* BOTÃO MÁGICO YOUTUBE */
         .btn-magic-yt { 
-            background: #e67e22; /* Laranja */
-            color: #fff; width: 100%; margin-bottom: 8px; padding: 12px; 
-            font-size: 0.9rem; border: 1px solid #d35400; cursor: pointer; position: relative;
-            font-weight: bold;
+            background: #e67e22; color: #fff; width: 100%; margin-bottom: 8px; padding: 12px; 
+            font-size: 0.9rem; border: 1px solid #d35400; cursor: pointer; position: relative; font-weight: bold;
         }
         .btn-magic-yt:disabled { background: #555; border-color: #666; color: #aaa; }
         .spinner {
@@ -125,6 +123,12 @@
             border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
         .font-btn:active { background: #666; }
+
+        .btn-link {
+            text-decoration: none; color: #f1c40f; font-size: 0.85rem; display: block;
+            text-align: center; margin-top: 10px; padding: 10px; border: 1px dashed #f1c40f;
+            border-radius: 6px; font-weight: bold;
+        }
 
         input[type="file"] { display: none; }
         #resume-status { font-size: 0.75rem; color: #4cd137; text-align: center; margin-top: 5px; display: none; }
@@ -232,7 +236,7 @@
 
         <button id="yt-magic-btn" class="btn-magic-yt" onclick="extractYouTubeSubs()">
             <span class="spinner" id="yt-spinner"></span>
-            <span id="yt-btn-text">🪄 Extrair Legenda do YouTube (Automático)</span>
+            <span id="yt-btn-text">🪄 Tentar Extrair Legenda (Automático)</span>
         </button>
 
         <div id="file-controls">
@@ -254,6 +258,10 @@
                 <label class="color-picker-label">Bg <input type="color" id="bgColor" value="#000000"></label>
             </div>
         </div>
+        
+        <a href="https://downsub.com/" target="_blank" class="btn-link" id="downsub-link">
+            🔗 Não funcionou? Baixe pelo DownSub (Site Externo)
+        </a>
     </div>
 
     <div id="ui-toggle-bar" onclick="toggleMainUI()">🔼</div>
@@ -280,7 +288,7 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --- CHAVE YOUTUBE ---
+        // --- CONFIGURAÇÃO API ---
         let YOUTUBE_API_KEY = localStorage.getItem('ejoy_yt_key') || "";
 
         function openApiConfig() { document.getElementById('api-key-config').style.display = 'block'; document.getElementById('api-key-input').value = YOUTUBE_API_KEY; }
@@ -290,7 +298,7 @@
             if(key) { YOUTUBE_API_KEY = key; localStorage.setItem('ejoy_yt_key', key); alert("Chave Salva!"); closeApiConfig(); }
         }
 
-        // --- MÁGICA DE LEGENDA YOUTUBE (EXTRAÇÃO VIA PROXY) ---
+        // --- MÁGICA DE LEGENDA YOUTUBE ---
         async function extractYouTubeSubs() {
             if (playerType !== 'youtube') { alert("Carregue um vídeo do YouTube primeiro!"); return; }
             
@@ -298,82 +306,68 @@
             const videoId = extractVideoID(url);
             if (!videoId) { alert("ID do vídeo não encontrado."); return; }
 
-            // UI
+            // Atualiza link do DownSub com o video atual para facilitar
+            document.getElementById('downsub-link').href = `https://downsub.com/?url=${encodeURIComponent(url)}`;
+
             const btn = document.getElementById('yt-magic-btn');
             const spinner = document.getElementById('yt-spinner');
             const txt = document.getElementById('yt-btn-text');
-            btn.disabled = true; spinner.style.display = 'inline-block'; txt.innerText = "Buscando legendas...";
+            btn.disabled = true; spinner.style.display = 'inline-block'; txt.innerText = "Buscando...";
 
             try {
-                // 1. Usa um Proxy Público (AllOrigins) para ler o HTML da página do vídeo sem baixar o vídeo
-                // Isso contorna o CORS e pega o JSON de configuração onde as legendas ficam escondidas
                 const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}`;
                 const response = await fetch(proxyUrl);
+                
+                if (!response.ok) throw new Error("Erro de rede ao acessar YouTube.");
+                
                 const data = await response.json();
                 const html = data.contents;
 
-                // 2. Procura a lista de legendas (captionTracks) no HTML usando Regex
-                // O YouTube guarda isso dentro de um objeto JSON gigante no código fonte
                 const regex = /"captionTracks":(\[.*?\])/;
                 const match = regex.exec(html);
 
                 if (!match) {
-                    throw new Error("Nenhuma legenda automática encontrada neste vídeo. O YouTube pode não ter gerado ainda.");
+                    throw new Error("Não achei legendas automáticas no código deste vídeo.");
                 }
 
                 const tracks = JSON.parse(match[1]);
-                console.log("Legendas encontradas:", tracks);
-
-                // 3. Tenta achar inglês ou português, ou pega a primeira (que geralmente é a Auto-Generated)
                 let selectedTrack = tracks.find(t => t.languageCode === 'en') || tracks.find(t => t.languageCode === 'pt') || tracks[0];
                 
-                // 4. Baixa o XML da legenda (via proxy novamente para não dar erro)
                 const subUrl = selectedTrack.baseUrl;
                 const subProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(subUrl)}`;
                 const subResponse = await fetch(subProxyUrl);
                 const subData = await subResponse.json();
                 const xmlText = subData.contents;
 
-                // 5. Parseia o XML para nosso formato
                 subtitles = parseYouTubeXML(xmlText);
                 
                 if(subtitles.length > 0) {
                     try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
-                    alert(`🪄 Sucesso! Extraída legenda: ${selectedTrack.name.simpleText} (${selectedTrack.languageCode})`);
+                    alert(`🪄 Sucesso! Legenda carregada: ${selectedTrack.name.simpleText}`);
                     resumeStatus.style.display = 'block'; resumeStatus.innerText = "✅ Legenda YT Ativa";
                 } else {
-                    throw new Error("Arquivo de legenda vazio.");
+                    throw new Error("Legenda vazia.");
                 }
 
             } catch (err) {
                 console.error(err);
-                alert("Erro ao extrair legenda: " + err.message + "\n\nTente usar o botão 'Baixar Legenda' (DownSub) como alternativa.");
+                alert("⚠️ A extração automática falhou (Bloqueio do YouTube).\n\nNão se preocupe! Clique no botão '🔗 Não funcionou? Baixe pelo DownSub' logo abaixo. Lá é 100% garantido.");
             } finally {
-                btn.disabled = false; spinner.style.display = 'none'; txt.innerText = "🪄 Extrair Legenda do YouTube (Automático)";
+                btn.disabled = false; spinner.style.display = 'none'; txt.innerText = "🪄 Tentar Extrair Legenda (Automático)";
             }
         }
 
-        // Parse específico para o XML do YouTube
         function parseYouTubeXML(xmlString) {
             const parser = new DOMParser();
             const xml = parser.parseFromString(xmlString, "text/xml");
             const texts = xml.getElementsByTagName('text');
             const result = [];
-            
             for (let i = 0; i < texts.length; i++) {
                 const node = texts[i];
                 const start = parseFloat(node.getAttribute('start'));
                 const dur = parseFloat(node.getAttribute('dur') || "0");
-                // Limpa o texto (remove quebras e caracteres estranhos do HTML)
                 const text = node.textContent.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\n/g, ' ').trim();
-                
-                if (text) {
-                    result.push({
-                        start: start,
-                        end: start + dur,
-                        text: text
-                    });
-                }
+                if (text) { result.push({ start: start, end: start + dur, text: text }); }
             }
             return result;
         }
@@ -418,7 +412,6 @@
         let currentVideoURL = null; 
         let currentFontSize = 1.2;
 
-        // --- FUNÇÕES DE UI ---
         function changeFontSize(delta) {
             currentFontSize += delta; if (currentFontSize < 0.5) currentFontSize = 0.5; if (currentFontSize > 3.0) currentFontSize = 3.0;
             subBox.style.fontSize = currentFontSize + 'rem';
@@ -430,7 +423,6 @@
             else { controls.style.display = 'none'; bar.innerText = '🔽'; }
         }
 
-        // --- BUSCA YOUTUBE ---
         async function initSearch() {
             const query = ytInput.value.trim();
             if (query.includes('youtube.com') || query.includes('youtu.be')) { loadYouTubeFromInput(); return; }
@@ -492,7 +484,6 @@
 
         function resetApp() {
             if(currentVideoURL) URL.revokeObjectURL(currentVideoURL);
-            // CORREÇÃO: Limpa apenas dados da sessão
             localStorage.removeItem('ejoy_subs');
             localStorage.removeItem('ejoy_vidName');
             localStorage.removeItem('ejoy_time');
@@ -507,7 +498,12 @@
             if(currentVideoURL) { URL.revokeObjectURL(currentVideoURL); currentVideoURL = null; }
             video.removeAttribute('src'); video.load(); video.style.display = 'none';
             ytContainer.style.display = 'flex'; gestureLayer.style.display = 'block'; unlockBtn.style.display = 'block'; ytControlsLocked = true;
-            localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`); localStorage.setItem('ejoy_mode', 'youtube');
+            
+            const fullUrl = `https://www.youtube.com/watch?v=${videoId}`;
+            localStorage.setItem('ejoy_ytUrl', fullUrl); localStorage.setItem('ejoy_mode', 'youtube');
+            // Atualiza link do DownSub imediatamente
+            document.getElementById('downsub-link').href = `https://downsub.com/?url=${encodeURIComponent(fullUrl)}`;
+
             if(ytPlayer) { ytPlayer.loadVideoById(videoId); } 
             else { ytPlayer = new YT.Player('yt-player', { height: '100%', width: '100%', videoId: videoId, playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, }); }
             startYTSync();
@@ -538,7 +534,6 @@
             if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) document.getElementById('api-key-config').style.display='block';
         };
 
-        // --- VÍDEO LOCAL ---
         document.getElementById('videoInput').onchange = e => {
             const file = e.target.files[0];
             if(file) {
@@ -556,8 +551,7 @@
                     try {
                         const parsed = parseSubtitles(r.target.result); 
                         if (parsed.length > 0) {
-                            subtitles = parsed; 
-                            try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
+                            subtitles = parsed; try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
                             resumeStatus.style.display = 'block'; resumeStatus.innerText = "✅ Legenda";
                         } else { alert("Arquivo vazio."); }
                     } catch(e) { alert("Erro ao ler."); }

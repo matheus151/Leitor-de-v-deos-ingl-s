@@ -3,137 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V21.0 - Robust)</title>
+    <title>Player Estudo Pro (V22.0 - Design)</title>
     <style>
+        /* --- VARIÁVEIS DE DESIGN --- */
+        :root {
+            --bg-color: #121212;
+            --panel-color: #1e1e1e;
+            --input-bg: #2c2c2c;
+            --border-color: #333;
+            --primary: #3498db;
+            --accent: #f1c40f;
+            --yt-color: #e52d27;
+            --text-main: #eee;
+            --text-dim: #aaa;
+            --radius: 8px;
+        }
+
         /* --- GERAL --- */
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background: #000; color: #fff; margin: 0; 
+            background: var(--bg-color); color: var(--text-main); margin: 0; 
             display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
 
         /* --- CONTROLES SUPERIORES --- */
         #controls-wrapper {
-            background: #1a1a1a; 
-            z-index: 50; padding: 8px;
+            background: var(--panel-color);
+            z-index: 50; padding: 12px;
             transition: opacity 0.3s;
-            max-height: 80vh; 
+            max-height: 85vh; 
             overflow-y: auto;
             flex-shrink: 0;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         
+        /* BARRA DE TOGGLE (DESIGN NOVO) */
         #ui-toggle-bar {
-            background: #111; color: #666; text-align: center; padding: 6px;
-            cursor: pointer; border-bottom: 1px solid #333; z-index: 51;
+            background: #000; color: #555; text-align: center; padding: 2px 0;
+            cursor: pointer; border-bottom: 1px solid #222; z-index: 51;
             font-size: 1.2rem; line-height: 1; user-select: none; flex-shrink: 0;
+            transition: background 0.2s;
         }
-        #ui-toggle-bar:hover { background: #222; color: #fff; }
+        #ui-toggle-bar:active { background: #222; color: #fff; }
 
-        /* BUSCA YOUTUBE */
-        .yt-search-group { display: flex; gap: 5px; margin-bottom: 8px; }
-        .yt-input {
-            background: #333; border: 1px solid #444; color: #fff; padding: 8px;
-            border-radius: 6px; flex-grow: 1; font-size: 0.8rem;
+        /* INPUTS & GRUPOS */
+        .control-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        
+        .modern-input {
+            background: var(--input-bg); border: 1px solid var(--border-color);
+            color: #fff; padding: 10px 12px; border-radius: var(--radius);
+            flex-grow: 1; font-size: 0.9rem; transition: border 0.2s;
         }
-        .yt-btn {
-            background: #e52d27; color: #fff; border: none; padding: 0 12px;
-            border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1.2rem;
+        .modern-input:focus { border-color: var(--primary); }
+
+        .icon-btn {
+            background: var(--input-bg); color: #fff; border: 1px solid var(--border-color);
+            padding: 0 14px; border-radius: var(--radius); cursor: pointer;
+            font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
         }
-        .search-trigger-btn { background: #00a8ff; } 
+        .icon-btn:active { background: #444; }
+        .btn-primary { background: var(--primary); border: none; }
+        .btn-primary:active { background: #2980b9; }
 
         /* RESULTADOS BUSCA */
         #search-results-container {
-            display: none; background: #222; border: 1px solid #444; border-radius: 8px; 
-            margin-bottom: 10px; overflow: hidden;
+            display: none; background: #181818; border: 1px solid var(--border-color);
+            border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
         }
         #results-header {
-            background: #333; padding: 8px 12px; font-size: 0.85rem; font-weight: bold;
+            background: #252525; padding: 10px 12px; font-size: 0.85rem; font-weight: 600;
             display: flex; justify-content: space-between; align-items: center;
-            cursor: pointer; border-bottom: 1px solid #444;
+            cursor: pointer; border-bottom: 1px solid var(--border-color); color: var(--text-dim);
         }
-        .toggle-arrow { font-size: 1.2rem; transform: rotate(0deg); transition: transform 0.3s; }
+        .toggle-arrow { transition: transform 0.3s; }
         .toggle-arrow.collapsed { transform: rotate(180deg); }
 
         #search-results-list {
-            display: flex; flex-direction: column; gap: 10px; padding: 10px;
-            max-height: 40vh; overflow-y: auto; transition: max-height 0.3s ease;
+            display: flex; flex-direction: column; padding: 8px; gap: 8px;
+            max-height: 45vh; overflow-y: auto; transition: max-height 0.3s ease;
         }
-        #search-results-list.hidden { max-height: 0; padding: 0; border: none; }
+        #search-results-list.hidden { max-height: 0; padding: 0; }
 
         .video-item {
-            display: flex; gap: 10px; padding: 8px; background: #2a2a2a; 
-            border-radius: 6px; cursor: pointer; align-items: center; border: 1px solid transparent; position: relative;
+            display: flex; gap: 10px; padding: 8px; background: var(--input-bg); 
+            border-radius: 6px; cursor: pointer; align-items: center; transition: background 0.2s;
         }
-        .video-item:active { background: #444; border-color: #666; }
-        .video-thumb-wrapper { position: relative; width: 100px; height: 56px; flex-shrink: 0; }
-        .video-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; background: #000; }
+        .video-item:active { background: #3a3a3a; }
+        .video-thumb-wrapper { position: relative; width: 110px; height: 62px; flex-shrink: 0; }
+        .video-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
         .video-duration {
             position: absolute; bottom: 4px; right: 4px; 
-            background: rgba(0,0,0,0.8); color: #fff; 
-            font-size: 0.65rem; padding: 1px 4px; border-radius: 2px;
+            background: rgba(0,0,0,0.85); color: #fff; 
+            font-size: 0.65rem; padding: 2px 4px; border-radius: 3px;
         }
         .video-info { flex-grow: 1; overflow: hidden; }
-        .video-title { font-size: 0.85rem; line-height: 1.2; margin-bottom: 4px; font-weight: 500; }
-        .video-channel { font-size: 0.7rem; color: #aaa; }
-        .loading-more { text-align: center; color: #aaa; padding: 10px; font-style: italic; font-size: 0.8rem; }
+        .video-title { font-size: 0.85rem; line-height: 1.3; margin-bottom: 4px; color: #fff; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .video-channel { font-size: 0.75rem; color: var(--text-dim); }
 
-        /* API KEY */
+        /* API KEY CONFIG */
         #api-key-config {
-            display: none; padding: 10px; background: #332b00; border: 1px solid #ffcc00;
-            border-radius: 6px; margin-bottom: 10px; font-size: 0.8rem;
+            display: none; padding: 12px; background: #2c2500; border: 1px solid #665500;
+            border-radius: var(--radius); margin-bottom: 10px; font-size: 0.85rem;
+        }
+        .api-save-btn { background: #f1c40f; color: #000; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; margin-top: 5px; cursor: pointer; }
+
+        /* BOTÕES DE ARQUIVO & DOWNLOAD */
+        .grid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        
+        .file-label {
+            background: var(--input-bg); border: 1px solid var(--border-color);
+            padding: 12px; border-radius: var(--radius); text-align: center;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-dim);
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+            transition: background 0.2s;
+        }
+        .file-label:active { background: #333; }
+        .file-label span { font-size: 1.2rem; }
+
+        .btn-external {
+            border: none; padding: 12px; border-radius: var(--radius); 
+            font-size: 0.8rem; font-weight: 600; cursor: pointer; text-align: center; color: #fff;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            text-decoration: none;
+        }
+        .btn-yt-dl { background: #c0392b; } /* Vermelho escuro */
+        .btn-local-dl { background: #2980b9; } /* Azul escuro */
+        
+        .btn-reset { 
+            background: #222; border: 1px solid #444; color: #e74c3c; width: 100%; 
+            padding: 10px; border-radius: var(--radius); font-weight: bold; margin-top: 5px;
         }
 
-        /* ARQUIVOS */
-        #file-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-        .custom-file-upload {
-            border: 1px solid #444; display: flex; align-items: center; justify-content: center;
-            padding: 10px; cursor: pointer; background: #333; border-radius: 6px; 
-            flex-grow: 1; text-align: center; font-weight: 600; font-size: 0.85rem;
+        #resume-status { 
+            font-size: 0.75rem; color: #2ecc71; text-align: center; margin: 8px 0; display: none; 
+            background: rgba(46, 204, 113, 0.1); padding: 4px; border-radius: 4px;
         }
-        
-        /* AÇÕES */
-        .btn-clear { background: #c0392b; color: #fff; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; margin-bottom: 8px; cursor: pointer; }
-        
-        /* BOTÃO MÁGICO YOUTUBE */
-        .btn-magic-yt { 
-            background: #e67e22; color: #fff; width: 100%; margin-bottom: 8px; padding: 12px; 
-            font-size: 0.9rem; border: 1px solid #d35400; cursor: pointer; position: relative; font-weight: bold;
-        }
-        .btn-magic-yt:disabled { background: #555; border-color: #666; color: #aaa; }
-        .spinner {
-            display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite;
-            margin-right: 5px; vertical-align: middle; display: none;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ESTILOS */
+        /* ESTILOS (Font/Cor) */
         #style-controls {
             display: flex; justify-content: space-between; align-items: center;
-            font-size: 0.8rem; background: #222; padding: 6px; border-radius: 6px;
+            background: #252525; padding: 8px; border-radius: var(--radius);
         }
         .style-group { display: flex; align-items: center; gap: 8px; }
-        .color-picker-label { display: flex; align-items: center; gap: 3px; }
-        input[type="color"] { border: none; width: 25px; height: 25px; background: none; padding: 0; }
-        
         .font-btn {
-            background: #444; color: #fff; border: 1px solid #555; width: 30px; height: 30px;
+            background: #333; color: #fff; border: 1px solid #444; width: 32px; height: 32px;
             border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
-        .font-btn:active { background: #666; }
-
-        .btn-link {
-            text-decoration: none; color: #f1c40f; font-size: 0.85rem; display: block;
-            text-align: center; margin-top: 10px; padding: 10px; border: 1px dashed #f1c40f;
-            border-radius: 6px; font-weight: bold;
+        .color-picker-wrapper { 
+            display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #aaa; 
+            background: #333; padding: 2px 6px; border-radius: 4px;
         }
+        input[type="color"] { border: none; width: 20px; height: 20px; background: none; padding: 0; cursor: pointer; }
 
         input[type="file"] { display: none; }
-        #resume-status { font-size: 0.75rem; color: #4cd137; text-align: center; margin-top: 5px; display: none; }
 
-        /* --- VÍDEO --- */
+        /* --- ÁREA DO VÍDEO --- */
         #video-wrapper { 
             position: relative; flex-grow: 1; display: flex; 
             align-items: center; justify-content: center; background: #000; 
@@ -148,104 +175,115 @@
         #unlock-yt-btn {
             position: absolute; top: 10px; right: 10px; z-index: 60;
             background: rgba(0,0,0,0.6); color: #fff; border: 1px solid #555;
-            padding: 5px 10px; border-radius: 4px; font-size: 0.7rem; display: none; cursor: pointer;
+            padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; display: none; cursor: pointer;
+            backdrop-filter: blur(4px);
         }
 
         /* --- LEGENDAS --- */
         #subtitle-container {
-            position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%);
-            width: auto; min-width: 80%; max-width: 98%; z-index: 20; 
+            position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
+            width: auto; min-width: 80%; max-width: 96%; z-index: 20; 
             display: flex; flex-direction: column; align-items: center;
         }
         .subtitle-box {
-            background-color: rgba(0, 0, 0, 0.7); color: #ffffff;
-            padding: 0 12px 8px 12px; border-radius: 12px;
+            background-color: rgba(0, 0, 0, 0.75); color: #ffffff;
+            padding: 0 14px 10px 14px; border-radius: 12px;
             pointer-events: auto; user-select: none; -webkit-user-select: none; touch-action: none; 
-            line-height: 1.4; text-align: center; position: relative;
+            line-height: 1.45; text-align: center; position: relative;
             transition: background-color 0.3s, color 0.3s; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            font-size: 1.2rem; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            font-size: 1.2rem; backdrop-filter: blur(2px);
         }
         
         #drag-handle {
-            width: 40px; height: 5px; background-color: rgba(255,255,255,0.3);
-            margin: 6px auto; border-radius: 10px; cursor: move;
+            width: 50px; height: 4px; background-color: rgba(255,255,255,0.2);
+            margin: 6px auto 8px auto; border-radius: 10px; cursor: move;
         }
 
-        @media (orientation: landscape) {
-            #controls-wrapper { display: none; }
-            #ui-toggle-bar { display: none; }
-            #subtitle-container { bottom: 10%; }
-        }
-
+        /* PALAVRAS & TRADUÇÃO */
         .word {
-            font-size: 1em; 
-            padding: 4px 1px; border-radius: 4px; display: inline; cursor: pointer;
+            font-size: 1em; padding: 2px 0; border-radius: 3px; display: inline; cursor: pointer;
             box-decoration-break: clone; -webkit-box-decoration-break: clone;
         }
-        .word.selected { background-color: #f1c40f !important; color: #000 !important; }
+        .word.selected { background-color: var(--accent) !important; color: #000 !important; }
 
         .translate-btn {
             display: inline-flex; align-items: center; justify-content: center;
             background: #fff; color: #000; border-radius: 50%;
-            width: 22px; height: 22px; margin-left: 8px; 
-            font-size: 12px; cursor: pointer; vertical-align: middle;
+            width: 20px; height: 20px; margin-left: 8px; 
+            font-size: 11px; cursor: pointer; vertical-align: middle; opacity: 0.8;
         }
 
         #translation-card {
             display: none; position: absolute; top: 10%; left: 50%;
             transform: translateX(-50%); width: 90%;
             background: rgba(255, 255, 255, 0.95); color: #222;
-            padding: 15px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 100;
-            backdrop-filter: blur(5px); text-align: center;
+            padding: 16px; border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6); z-index: 100;
+            backdrop-filter: blur(8px); text-align: center;
         }
-        #phrase-orig { font-weight: bold; color: #555; margin-bottom: 5px; font-size: 0.9rem; }
-        #phrase-trans { font-size: 1.2rem; font-weight: 800; color: #000; }
-        #close-trans { margin-top: 10px; padding: 5px 15px; background: #eee; border: none; border-radius: 4px; }
+        #phrase-orig { font-weight: bold; color: #555; margin-bottom: 6px; font-size: 0.9rem; }
+        #phrase-trans { font-size: 1.3rem; font-weight: 800; color: #000; line-height: 1.2; }
+        #close-trans { margin-top: 12px; padding: 8px 20px; background: #eee; border: none; border-radius: 6px; font-weight: bold; color: #333; }
+        
         #gesture-feedback {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             font-size: 4rem; opacity: 0; transition: opacity 0.3s; pointer-events: none;
-            text-shadow: 0 0 10px #000; z-index: 50;
+            text-shadow: 0 0 15px rgba(0,0,0,0.8); z-index: 50;
+        }
+        
+        /* Landscape adjustments */
+        @media (orientation: landscape) {
+            #controls-wrapper { display: none; }
+            #ui-toggle-bar { display: none; }
+            #subtitle-container { bottom: 8%; }
         }
     </style>
 </head>
 <body>
 
     <div id="controls-wrapper">
-        <div class="yt-search-group">
-            <input type="text" id="yt-search-input" class="yt-input" placeholder="Pesquisar YouTube...">
-            <button class="yt-btn search-trigger-btn" onclick="initSearch()">🔍</button>
-            <button class="yt-btn" onclick="openApiConfig()">🔑</button>
+        <div class="control-group">
+            <input type="text" id="yt-search-input" class="modern-input" placeholder="YouTube (Link ou Busca)...">
+            <button class="icon-btn btn-primary" onclick="initSearch()">🔍</button>
+            <button class="icon-btn" onclick="openApiConfig()">🔑</button>
         </div>
         
         <div id="api-key-config">
-            <p style="margin:0 0 5px 0;">⚠️ Insira sua <b>YouTube API Key</b> (para buscas):</p>
-            <input type="text" id="api-key-input" class="yt-input" placeholder="Cole API Key aqui">
-            <button onclick="saveApiKey()" style="margin-top:5px; padding:5px;">Salvar Chave</button>
-            <button onclick="closeApiConfig()" style="margin-top:5px; padding:5px; background:#555;">Fechar</button>
+            <p style="margin:0 0 5px 0; color:#fff;">⚠️ <b>API Key YouTube</b> necessária para busca:</p>
+            <input type="text" id="api-key-input" class="modern-input" placeholder="Cole sua API Key aqui">
+            <button class="api-save-btn" onclick="saveApiKey()">Salvar</button>
+            <button class="api-save-btn" onclick="document.getElementById('api-key-config').style.display='none'" style="background:#444; color:#fff;">Fechar</button>
         </div>
 
         <div id="search-results-container">
             <div id="results-header" onclick="toggleResults()">
-                <span>📺 Resultados da Busca</span>
+                <span>📺 Resultados</span>
                 <span class="toggle-arrow" id="results-arrow">▼</span>
             </div>
             <div id="search-results-list"></div>
         </div>
 
-        <button id="yt-magic-btn" class="btn-magic-yt" onclick="extractYouTubeSubs()">
-            <span class="spinner" id="yt-spinner"></span>
-            <span id="yt-btn-text">🪄 Tentar Extrair Legenda (Automático)</span>
-        </button>
-
-        <div id="file-controls">
-            <label class="custom-file-upload">🎬 Vídeo Local <input type="file" id="videoInput" accept="video/mp4, video/x-m4v, video/*"></label>
-            <label class="custom-file-upload">📂 Legenda <input type="file" id="subInput" accept="*"></label>
+        <div class="grid-row">
+            <label class="file-label">
+                <span>📁</span> Vídeo Local
+                <input type="file" id="videoInput" accept="video/mp4, video/x-m4v, video/*">
+            </label>
+            <label class="file-label">
+                <span>📝</span> Legenda
+                <input type="file" id="subInput" accept="*">
+            </label>
         </div>
 
-        <button class="btn-clear" onclick="resetApp()">🗑️ Fechar Vídeo e Limpar</button>
-        
+        <div class="grid-row">
+            <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">
+                ⬇️ YouTube (DownSub)
+            </button>
+            <button class="btn-external btn-local-dl" onclick="openExternalOpenSubs()">
+                🔎 Local (OpenSub)
+            </button>
+        </div>
+
         <div id="resume-status"></div>
         
         <div id="style-controls">
@@ -254,14 +292,12 @@
                 <button class="font-btn" onclick="changeFontSize(0.1)">A+</button>
             </div>
             <div class="style-group">
-                <label class="color-picker-label">T <input type="color" id="textColor" value="#ffffff"></label>
-                <label class="color-picker-label">Bg <input type="color" id="bgColor" value="#000000"></label>
+                <div class="color-picker-wrapper">Txt <input type="color" id="textColor" value="#ffffff"></div>
+                <div class="color-picker-wrapper">Bg <input type="color" id="bgColor" value="#000000"></div>
             </div>
         </div>
-        
-        <a href="https://downsub.com/" target="_blank" class="btn-link" id="downsub-link">
-            🔗 Não funcionou? Baixe pelo DownSub (Site Externo)
-        </a>
+
+        <button class="btn-reset" onclick="resetApp()">🗑️ Fechar Vídeo</button>
     </div>
 
     <div id="ui-toggle-bar" onclick="toggleMainUI()">🔼</div>
@@ -272,12 +308,14 @@
         <div id="gesture-layer"></div>
         <button id="unlock-yt-btn" onclick="toggleYtControls()">⚙️ Controles YouTube</button>
         <div id="gesture-feedback">⏪</div>
+        
         <div id="subtitle-container">
             <div class="subtitle-box" id="subtitle-box">
                 <div id="drag-handle"></div>
                 <div id="subtitle-content"></div>
             </div>
         </div>
+
         <div id="translation-card">
             <div id="phrase-orig">Original</div>
             <div id="phrase-trans">Tradução...</div>
@@ -288,91 +326,21 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --- CONFIGURAÇÃO API ---
-        let YOUTUBE_API_KEY = localStorage.getItem('ejoy_yt_key') || "";
-
-        function openApiConfig() { document.getElementById('api-key-config').style.display = 'block'; document.getElementById('api-key-input').value = YOUTUBE_API_KEY; }
-        function closeApiConfig() { document.getElementById('api-key-config').style.display = 'none'; }
-        function saveApiKey() {
-            const key = document.getElementById('api-key-input').value.trim();
-            if(key) { YOUTUBE_API_KEY = key; localStorage.setItem('ejoy_yt_key', key); alert("Chave Salva!"); closeApiConfig(); }
-        }
-
-        // --- MÁGICA DE LEGENDA YOUTUBE ---
-        async function extractYouTubeSubs() {
-            if (playerType !== 'youtube') { alert("Carregue um vídeo do YouTube primeiro!"); return; }
-            
+        // --- FUNÇÕES DE LINKS EXTERNOS ---
+        function openExternalDownSub() {
             const url = localStorage.getItem('ejoy_ytUrl');
-            const videoId = extractVideoID(url);
-            if (!videoId) { alert("ID do vídeo não encontrado."); return; }
-
-            // Atualiza link do DownSub com o video atual para facilitar
-            document.getElementById('downsub-link').href = `https://downsub.com/?url=${encodeURIComponent(url)}`;
-
-            const btn = document.getElementById('yt-magic-btn');
-            const spinner = document.getElementById('yt-spinner');
-            const txt = document.getElementById('yt-btn-text');
-            btn.disabled = true; spinner.style.display = 'inline-block'; txt.innerText = "Buscando...";
-
-            try {
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}`;
-                const response = await fetch(proxyUrl);
-                
-                if (!response.ok) throw new Error("Erro de rede ao acessar YouTube.");
-                
-                const data = await response.json();
-                const html = data.contents;
-
-                const regex = /"captionTracks":(\[.*?\])/;
-                const match = regex.exec(html);
-
-                if (!match) {
-                    throw new Error("Não achei legendas automáticas no código deste vídeo.");
-                }
-
-                const tracks = JSON.parse(match[1]);
-                let selectedTrack = tracks.find(t => t.languageCode === 'en') || tracks.find(t => t.languageCode === 'pt') || tracks[0];
-                
-                const subUrl = selectedTrack.baseUrl;
-                const subProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(subUrl)}`;
-                const subResponse = await fetch(subProxyUrl);
-                const subData = await subResponse.json();
-                const xmlText = subData.contents;
-
-                subtitles = parseYouTubeXML(xmlText);
-                
-                if(subtitles.length > 0) {
-                    try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
-                    alert(`🪄 Sucesso! Legenda carregada: ${selectedTrack.name.simpleText}`);
-                    resumeStatus.style.display = 'block'; resumeStatus.innerText = "✅ Legenda YT Ativa";
-                } else {
-                    throw new Error("Legenda vazia.");
-                }
-
-            } catch (err) {
-                console.error(err);
-                alert("⚠️ A extração automática falhou (Bloqueio do YouTube).\n\nNão se preocupe! Clique no botão '🔗 Não funcionou? Baixe pelo DownSub' logo abaixo. Lá é 100% garantido.");
-            } finally {
-                btn.disabled = false; spinner.style.display = 'none'; txt.innerText = "🪄 Tentar Extrair Legenda (Automático)";
-            }
+            if(playerType !== 'youtube' || !url) { alert("Carregue um vídeo do YouTube primeiro."); return; }
+            window.open(`https://downsub.com/?url=${encodeURIComponent(url)}`, '_blank');
         }
 
-        function parseYouTubeXML(xmlString) {
-            const parser = new DOMParser();
-            const xml = parser.parseFromString(xmlString, "text/xml");
-            const texts = xml.getElementsByTagName('text');
-            const result = [];
-            for (let i = 0; i < texts.length; i++) {
-                const node = texts[i];
-                const start = parseFloat(node.getAttribute('start'));
-                const dur = parseFloat(node.getAttribute('dur') || "0");
-                const text = node.textContent.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\n/g, ' ').trim();
-                if (text) { result.push({ start: start, end: start + dur, text: text }); }
-            }
-            return result;
+        function openExternalOpenSubs() {
+            const filename = localStorage.getItem('ejoy_vidName');
+            if(playerType !== 'local' || !filename) { alert("Carregue um vídeo local primeiro."); return; }
+            let cleanName = filename.replace(/\.(mp4|mkv|avi|mov)$/i, '').replace(/[._]/g, ' ');
+            window.open(`https://www.opensubtitles.org/en/search/sublanguageid-por,pob/q-${encodeURIComponent(cleanName)}`, '_blank');
         }
 
-        // --- VARIÁVEIS GLOBAIS ---
+        // --- LÓGICA PRINCIPAL ---
         const video = document.getElementById('mainVideo');
         const ytContainer = document.getElementById('yt-container');
         const gestureLayer = document.getElementById('gesture-layer');
@@ -406,9 +374,11 @@
         let isDragging = false;
         let dragStartX = 0; let dragStartY = 0;
         let initialTop = 0; let initialLeft = 0;
+        let YOUTUBE_API_KEY = localStorage.getItem('ejoy_api_key') || "";
         let nextPageToken = "";
         let currentQuery = "";
         let isFetching = false;
+        
         let currentVideoURL = null; 
         let currentFontSize = 1.2;
 
@@ -416,6 +386,7 @@
             currentFontSize += delta; if (currentFontSize < 0.5) currentFontSize = 0.5; if (currentFontSize > 3.0) currentFontSize = 3.0;
             subBox.style.fontSize = currentFontSize + 'rem';
         }
+
         function toggleMainUI() {
             const controls = document.getElementById('controls-wrapper');
             const bar = document.getElementById('ui-toggle-bar');
@@ -423,6 +394,13 @@
             else { controls.style.display = 'none'; bar.innerText = '🔽'; }
         }
 
+        function saveApiKey() {
+            const key = document.getElementById('api-key-input').value.trim();
+            if(key) { YOUTUBE_API_KEY = key; localStorage.setItem('ejoy_api_key', key); apiKeyConfig.style.display = 'none'; alert("Chave Salva!"); }
+        }
+        function openApiConfig() { apiKeyConfig.style.display = 'block'; document.getElementById('api-key-input').value = YOUTUBE_API_KEY; }
+
+        // --- BUSCA YOUTUBE ---
         async function initSearch() {
             const query = ytInput.value.trim();
             if (query.includes('youtube.com') || query.includes('youtu.be')) { loadYouTubeFromInput(); return; }
@@ -443,6 +421,7 @@
                 loader.remove();
                 if (data.error) { alert(`Erro API: ${data.error.message}`); return; }
                 nextPageToken = data.nextPageToken || "";
+                
                 const videoIds = data.items.map(item => item.id.videoId).join(',');
                 let videosData = {};
                 if (videoIds) {
@@ -469,9 +448,7 @@
             return str;
         }
 
-        resultsList.addEventListener('scroll', () => {
-            if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50) { if (nextPageToken && !isFetching) fetchVideos(); }
-        });
+        resultsList.addEventListener('scroll', () => { if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50 && nextPageToken && !isFetching) fetchVideos(); });
         function toggleResults(forceCollapse = false) {
             if (forceCollapse) { resultsList.classList.add('hidden'); resultsArrow.classList.add('collapsed'); }
             else { resultsList.classList.toggle('hidden'); resultsArrow.classList.toggle('collapsed'); }
@@ -484,11 +461,8 @@
 
         function resetApp() {
             if(currentVideoURL) URL.revokeObjectURL(currentVideoURL);
-            localStorage.removeItem('ejoy_subs');
-            localStorage.removeItem('ejoy_vidName');
-            localStorage.removeItem('ejoy_time');
-            localStorage.removeItem('ejoy_ytUrl');
-            localStorage.removeItem('ejoy_mode');
+            localStorage.removeItem('ejoy_subs'); localStorage.removeItem('ejoy_vidName');
+            localStorage.removeItem('ejoy_time'); localStorage.removeItem('ejoy_ytUrl'); localStorage.removeItem('ejoy_mode');
             location.reload(); 
         }
         
@@ -498,20 +472,15 @@
             if(currentVideoURL) { URL.revokeObjectURL(currentVideoURL); currentVideoURL = null; }
             video.removeAttribute('src'); video.load(); video.style.display = 'none';
             ytContainer.style.display = 'flex'; gestureLayer.style.display = 'block'; unlockBtn.style.display = 'block'; ytControlsLocked = true;
-            
-            const fullUrl = `https://www.youtube.com/watch?v=${videoId}`;
-            localStorage.setItem('ejoy_ytUrl', fullUrl); localStorage.setItem('ejoy_mode', 'youtube');
-            // Atualiza link do DownSub imediatamente
-            document.getElementById('downsub-link').href = `https://downsub.com/?url=${encodeURIComponent(fullUrl)}`;
-
+            localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`); localStorage.setItem('ejoy_mode', 'youtube');
             if(ytPlayer) { ytPlayer.loadVideoById(videoId); } 
             else { ytPlayer = new YT.Player('yt-player', { height: '100%', width: '100%', videoId: videoId, playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, }); }
             startYTSync();
         }
         function toggleYtControls() {
             const iframe = document.querySelector('iframe');
-            if(ytControlsLocked) { gestureLayer.style.display = 'none'; iframe.style.pointerEvents = 'auto'; unlockBtn.innerText = "🔒 Ativar Gestos"; ytControlsLocked = false; }
-            else { gestureLayer.style.display = 'block'; iframe.style.pointerEvents = 'none'; unlockBtn.innerText = "⚙️ Controles YouTube"; ytControlsLocked = true; }
+            if(ytControlsLocked) { gestureLayer.style.display = 'none'; iframe.style.pointerEvents = 'auto'; unlockBtn.innerText = "🔒 Gestos"; ytControlsLocked = false; }
+            else { gestureLayer.style.display = 'block'; iframe.style.pointerEvents = 'none'; unlockBtn.innerText = "⚙️ YouTube"; ytControlsLocked = true; }
         }
         function extractVideoID(url) {
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -545,7 +514,8 @@
             }
         };
         document.getElementById('subInput').onchange = e => {
-            if(e.target.files[0]) {
+            const file = e.target.files[0];
+            if(file) {
                 const reader = new FileReader();
                 reader.onload = r => { 
                     try {
@@ -556,7 +526,7 @@
                         } else { alert("Arquivo vazio."); }
                     } catch(e) { alert("Erro ao ler."); }
                 };
-                reader.readAsText(e.target.files[0]);
+                reader.readAsText(file);
             }
         };
 

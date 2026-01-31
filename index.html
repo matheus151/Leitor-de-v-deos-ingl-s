@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V27.0 - Google Translate)</title>
+    <title>Player Estudo Pro (V28.0 - Turbo Translate)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN (Temas) --- */
         :root {
@@ -140,9 +140,11 @@
         .btn-external {
             border: none; padding: 12px; border-radius: var(--radius); 
             font-size: 0.8rem; font-weight: 600; cursor: pointer; text-align: center; color: #fff;
-            display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            text-decoration: none;
         }
         .btn-yt-dl { background: #c0392b; } 
+        .btn-local-dl { background: #3498db; }
         
         .btn-reset { 
             background: var(--input-bg); border: 1px solid var(--border-color); color: #e74c3c; width: 100%; 
@@ -250,12 +252,18 @@
             text-align: center; border: 1px solid #ccc;
         }
         #phrase-orig { font-weight: bold; color: #555; margin-bottom: 6px; font-size: 0.9rem; }
-        #phrase-trans { font-size: 1.3rem; font-weight: 800; color: #000; line-height: 1.2; margin-bottom: 15px; }
+        
+        /* AJUSTE FONTE TRADUÇÃO */
+        #phrase-trans { 
+            font-size: 1.1rem; /* Diminuído de 1.3rem */
+            font-weight: 800; color: #000; line-height: 1.2; margin-bottom: 15px; 
+        }
         
         .trans-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
         .btn-card { padding: 8px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
         #btn-close-trans { background: #eee; color: #333; }
         #btn-save-vocab { background: #3498db; color: #fff; }
+        #btn-google-ext { background: #fff; border: 1px solid #ccc; color: #333; }
         
         #gesture-feedback {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -317,8 +325,9 @@
             </label>
         </div>
 
-        <div class="grid-row" style="grid-template-columns: 1fr;">
-            <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">⬇️ Baixar Legenda YouTube (DownSub)</button>
+        <div class="grid-row">
+            <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">⬇️ YouTube (DownSub)</button>
+            <button class="btn-external btn-local-dl" onclick="searchLocalSubsOnGoogle()">🔍 Buscar Legenda Local</button>
         </div>
         
         <button id="btn-dl-vocab" onclick="downloadVocabulary()">📥 Baixar Lista de Vocabulário (.txt)</button>
@@ -360,6 +369,7 @@
             <div id="phrase-trans">Tradução...</div>
             <div class="trans-actions">
                 <button id="btn-save-vocab" class="btn-card" onclick="saveCurrentVocab()">💾 Salvar</button>
+                <button id="btn-google-ext" class="btn-card" onclick="openGoogleTranslate()">G-Tradutor</button>
                 <button id="btn-close-trans" class="btn-card" onclick="document.getElementById('translation-card').style.display='none'">Fechar</button>
             </div>
         </div>
@@ -368,46 +378,53 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --- GOOGLE TRANSLATE (VIA PROXY) ---
+        // --- GOOGLE TRANSLATE TURBO (CORS PROXY) ---
         async function translateText(src, dsp) {
             currentTranslateSource = src;
             transCard.style.display = 'block'; 
             transOrig.textContent = dsp; 
             transRes.className = 'loading'; 
-            transRes.textContent = 'Traduzindo...';
+            transRes.textContent = '...'; // Mensagem curta para parecer mais rápido
             document.getElementById('btn-save-vocab').innerText = "💾 Salvar";
             
             try {
-                // Monta URL do Google Tradutor API
+                // Endpoint oficial do Google Translate (Client gtx)
                 const googleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pt&dt=t&q=${encodeURIComponent(src)}`;
-                // Passa pelo Proxy AllOrigins para evitar CORS
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(googleUrl)}`;
+                
+                // Proxy Turbo: corsproxy.io é mais rápido e direto que AllOrigins
+                const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(googleUrl);
                 
                 const res = await fetch(proxyUrl);
+                
+                // O Google retorna um Array JSON direto (sem embrulho)
                 const data = await res.json();
                 
-                if (data.contents) {
-                    // O conteúdo vem como string JSON, precisa parsear
-                    const googleResponse = JSON.parse(data.contents);
-                    // A tradução fica no primeiro item do array aninhado
-                    // Estrutura: [[["Tradução", "Original", ...], ...], ...]
-                    // Pode haver múltiplas sentenças, então juntamos
+                if (data && data[0]) {
                     let translatedText = "";
-                    if (googleResponse[0]) {
-                        googleResponse[0].forEach(segment => {
-                            if (segment[0]) translatedText += segment[0];
-                        });
-                    }
-                    
+                    data[0].forEach(segment => {
+                        if (segment[0]) translatedText += segment[0];
+                    });
                     transRes.className = '';
                     transRes.textContent = translatedText;
                 } else {
-                    throw new Error("Resposta vazia");
+                    throw new Error("Vazio");
                 }
             } catch (e) { 
                 console.error(e);
-                transRes.textContent = "Erro na conexão com Google."; 
+                // Fallback silencioso (MyMemory) caso o proxy falhe
+                fallbackTranslate(src);
             }
+        }
+
+        async function fallbackTranslate(src) {
+            try {
+                const u = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(src)}&langpair=en|pt-BR`;
+                const r = await fetch(u); const d = await r.json();
+                if(d.responseData) {
+                    transRes.className = '';
+                    transRes.textContent = d.responseData.translatedText;
+                }
+            } catch(e) { transRes.textContent = "Erro na rede."; }
         }
 
         // --- VOCAB & FAVORITOS ---
@@ -432,6 +449,11 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = 'vocabulario.txt';
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        function openGoogleTranslate() {
+            if(!currentTranslateSource) return;
+            window.open(`https://translate.google.com/?sl=en&tl=pt&text=${encodeURIComponent(currentTranslateSource)}&op=translate`, '_blank');
         }
 
         function toggleTheme() {
@@ -469,6 +491,12 @@
             const url = localStorage.getItem('ejoy_ytUrl');
             if(playerType !== 'youtube' || !url) { alert("Carregue um vídeo do YouTube."); return; }
             window.open(`https://downsub.com/?url=${encodeURIComponent(url)}`, '_blank');
+        }
+        function searchLocalSubsOnGoogle() {
+            const filename = localStorage.getItem('ejoy_vidName');
+            if(playerType !== 'local' || !filename) { alert("Carregue um vídeo local."); return; }
+            let cleanName = filename.replace(/\.(mp4|mkv|avi|mov)$/i, '');
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(cleanName + ' legenda português download')}`, '_blank');
         }
 
         // --- CORE ---
@@ -580,11 +608,9 @@
         }
 
         resultsList.addEventListener('scroll', () => { if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50 && nextPageToken && !isFetching) fetchVideos(); });
-        
         function loadYouTubeFromInput() {
             const url = ytInput.value; const videoId = extractVideoID(url);
-            if(!videoId) { alert("Link inválido."); return; } 
-            loadYouTube(videoId, "Link Direto", "");
+            if(!videoId) { alert("Link inválido."); return; } loadYouTube(videoId, "Link Direto", "");
         }
 
         function resetApp() {
@@ -595,7 +621,6 @@
         }
         
         function onYouTubeIframeAPIReady() {}
-        
         function loadYouTube(videoId, title, thumb) {
             subtitles = []; subContent.innerHTML = ""; playerType = 'youtube';
             if(currentVideoURL) { URL.revokeObjectURL(currentVideoURL); currentVideoURL = null; }
@@ -705,7 +730,6 @@
             });
             const btn = document.createElement('span');
             btn.className = 'translate-btn'; btn.innerHTML = '🌐';
-            
             btn.addEventListener('touchstart', (e) => {
                 e.stopPropagation(); e.preventDefault(); pauseAnyPlayer();
                 isSelecting = false; document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
@@ -757,7 +781,6 @@
             subBox.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.7)`;
         });
 
-        // --- SELEÇÃO DE TEXTO ---
         subContent.addEventListener('touchstart', (e) => {
             if(e.target.classList.contains('translate-btn')) return;
             const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
@@ -815,7 +838,9 @@
                 tEnd = e.changedTouches[0].screenX;
                 const duration = new Date().getTime() - tStartTime;
                 const diff = tEnd - tStart;
-                if (duration < 200 && Math.abs(diff) < 10) { if (mode === 'yt') togglePlayAny(); } 
+                if (duration < 200 && Math.abs(diff) < 10) { 
+                    if (mode === 'yt') togglePlayAny(); 
+                } 
                 else if (Math.abs(diff) > 30) {
                     if (diff < 0) { showFeedback('⏪'); jumpSubtitle(-1); } else { showFeedback('⏩'); jumpSubtitle(1); }
                 }

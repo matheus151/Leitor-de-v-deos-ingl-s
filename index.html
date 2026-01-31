@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V24.0 - Fix Spacing/Local)</title>
+    <title>Player Estudo Pro (V25.0)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN --- */
         :root {
@@ -152,7 +152,7 @@
             background: rgba(46, 204, 113, 0.1); padding: 4px; border-radius: 4px;
         }
 
-        /* ESTILOS (Font/Cor) */
+        /* ESTILOS */
         #style-controls {
             display: flex; justify-content: space-between; align-items: center;
             background: #252525; padding: 8px; border-radius: var(--radius);
@@ -189,10 +189,13 @@
             backdrop-filter: blur(4px);
         }
 
-        /* --- LEGENDAS --- */
+        /* --- LEGENDAS (MODO SEGURO) --- */
         #subtitle-container {
-            position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
-            width: auto; min-width: 80%; max-width: 96%; z-index: 20; 
+            position: absolute; 
+            /* Posição padrão segura */
+            bottom: 12%; left: 50%; transform: translateX(-50%);
+            width: auto; min-width: 80%; max-width: 96%; 
+            z-index: 100; /* Z-Index bem alto para não sumir */
             display: flex; flex-direction: column; align-items: center;
         }
         .subtitle-box {
@@ -200,22 +203,29 @@
             padding: 0 14px 10px 14px; border-radius: 12px;
             pointer-events: auto; user-select: none; -webkit-user-select: none; touch-action: none; 
             line-height: 1.45; text-align: center; position: relative;
+            /* Removemos transição de posição para o drag ser imediato */
             transition: background-color 0.3s, color 0.3s; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             font-size: 1.2rem; backdrop-filter: blur(2px);
         }
         
+        /* BARRINHA MELHORADA (Área de toque invisível) */
         #drag-handle {
-            width: 50px; height: 4px; background-color: rgba(255,255,255,0.2);
+            width: 50px; height: 4px; 
+            background-color: rgba(255,255,255,0.3);
             margin: 6px auto 8px auto; border-radius: 10px; cursor: move;
+            position: relative;
+        }
+        /* Hit-box invisível gigante para facilitar o toque */
+        #drag-handle::after {
+            content: ''; position: absolute;
+            top: -20px; bottom: -20px; left: -40px; right: -40px;
+            background: transparent;
         }
 
-        /* PALAVRAS (CORREÇÃO DE ESPAÇAMENTO V24) */
+        /* PALAVRAS */
         .word {
-            font-size: 1em; 
-            /* Voltei ao padrão inline para ter espaço natural */
-            padding: 2px 1px; 
-            border-radius: 4px; display: inline; cursor: pointer;
+            font-size: 1em; padding: 2px 1px; border-radius: 4px; display: inline; cursor: pointer;
             box-decoration-break: clone; -webkit-box-decoration-break: clone;
         }
         .word.selected { background-color: var(--accent) !important; color: #000 !important; }
@@ -248,7 +258,8 @@
         @media (orientation: landscape) {
             #controls-wrapper { display: none; }
             #ui-toggle-bar { display: none; }
-            #subtitle-container { bottom: 8%; }
+            /* Z-index máximo na horizontal */
+            #subtitle-container { bottom: 8%; z-index: 9999; }
         }
     </style>
 </head>
@@ -426,7 +437,6 @@
         let dragStartX = 0; let dragStartY = 0;
         let initialTop = 0; let initialLeft = 0;
         
-        // Touch Vars
         let isSelecting = false;
         let selectionStartIndex = -1;
 
@@ -556,10 +566,23 @@
             if (savedSubs) try { subtitles = JSON.parse(savedSubs); resumeStatus.style.display='block'; resumeStatus.innerText='✅ Legenda'; } catch(e){}
             if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) document.getElementById('api-key-config').style.display='block';
             renderFavorites();
+            
+            // Listener de orientação para corrigir posição da legenda
+            window.addEventListener('resize', fixSubtitlePosition);
         };
+        
+        // --- FUNÇÃO PARA CORRIGIR POSIÇÃO NA ROTAÇÃO ---
+        function fixSubtitlePosition() {
+            const rect = subContainer.getBoundingClientRect();
+            // Se a legenda estiver fora da tela (top > windowHeight), reseta
+            if (rect.top > window.innerHeight - 50 || rect.top < 0) {
+                subContainer.style.top = 'auto';
+                subContainer.style.left = '50%';
+                subContainer.style.bottom = '12%';
+                subContainer.style.transform = 'translateX(-50%)';
+            }
+        }
 
-        // --- LÓGICA VÍDEO LOCAL (FIXED V24) ---
-        // Adiciona listener de update para vídeo local
         video.addEventListener('timeupdate', () => {
             if (playerType === 'local') {
                 localStorage.setItem('ejoy_time', video.currentTime);
@@ -618,10 +641,7 @@
             const words = text.split(' ');
             words.forEach((w, i) => {
                 const span = document.createElement('span');
-                // Adiciona espaço manualmente após a palavra
-                span.textContent = w + ' '; 
-                span.className = 'word'; 
-                span.dataset.index = i;
+                span.textContent = w + ' '; span.className = 'word'; span.dataset.index = i;
                 span.dataset.raw = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g,"");
                 subContent.appendChild(span);
             });
@@ -678,7 +698,6 @@
             subBox.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.7)`;
         });
 
-        // --- SELEÇÃO DE TEXTO ---
         subContent.addEventListener('touchstart', (e) => {
             if(e.target.classList.contains('translate-btn')) return;
             const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);

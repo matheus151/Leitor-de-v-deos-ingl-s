@@ -3,20 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V25.0)</title>
+    <title>Player Estudo Pro (V26.0 - Vocab & Themes)</title>
     <style>
-        /* --- VARIÁVEIS DE DESIGN --- */
+        /* --- VARIÁVEIS DE DESIGN (Temas) --- */
         :root {
+            /* Tema Escuro (Padrão) */
             --bg-color: #121212;
             --panel-color: #1e1e1e;
             --input-bg: #2c2c2c;
             --border-color: #333;
-            --primary: #3498db;
-            --accent: #f1c40f;
-            --fav-color: #e74c3c;
             --text-main: #eee;
             --text-dim: #aaa;
+            
+            --primary: #3498db;
+            --accent: #f1c40f;
+            --success: #2ecc71;
             --radius: 8px;
+        }
+
+        /* Tema Claro (Ativado via classe) */
+        body.light-mode {
+            --bg-color: #f0f2f5;
+            --panel-color: #ffffff;
+            --input-bg: #e4e6eb;
+            --border-color: #ccc;
+            --text-main: #1c1e21;
+            --text-dim: #65676b;
         }
 
         /* --- GERAL --- */
@@ -25,55 +37,57 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             background: var(--bg-color); color: var(--text-main); margin: 0; 
             display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+            transition: background 0.3s, color 0.3s;
         }
 
         /* --- CONTROLES SUPERIORES --- */
         #controls-wrapper {
             background: var(--panel-color);
             z-index: 50; padding: 12px;
-            transition: opacity 0.3s;
+            transition: opacity 0.3s, background 0.3s;
             max-height: 85vh; 
             overflow-y: auto;
             flex-shrink: 0;
             border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         
         #ui-toggle-bar {
-            background: #000; color: #555; text-align: center; padding: 2px 0;
-            cursor: pointer; border-bottom: 1px solid #222; z-index: 51;
+            background: var(--panel-color); color: var(--text-dim); 
+            text-align: center; padding: 2px 0; border-top: 1px solid var(--border-color);
+            cursor: pointer; border-bottom: 1px solid var(--border-color); z-index: 51;
             font-size: 1.2rem; line-height: 1; user-select: none; flex-shrink: 0;
             transition: background 0.2s;
         }
-        #ui-toggle-bar:active { background: #222; color: #fff; }
+        #ui-toggle-bar:active { background: var(--border-color); }
 
         /* INPUTS & GRUPOS */
         .control-group { display: flex; gap: 8px; margin-bottom: 10px; }
         
         .modern-input {
             background: var(--input-bg); border: 1px solid var(--border-color);
-            color: #fff; padding: 10px 12px; border-radius: var(--radius);
+            color: var(--text-main); padding: 10px 12px; border-radius: var(--radius);
             flex-grow: 1; font-size: 0.9rem; transition: border 0.2s;
         }
         .modern-input:focus { border-color: var(--primary); }
 
         .icon-btn {
-            background: var(--input-bg); color: #fff; border: 1px solid var(--border-color);
+            background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-color);
             padding: 0 14px; border-radius: var(--radius); cursor: pointer;
             font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
             transition: background 0.2s;
         }
-        .icon-btn:active { background: #444; }
-        .btn-primary { background: var(--primary); border: none; }
+        .icon-btn:active { filter: brightness(0.9); }
+        .btn-primary { background: var(--primary); border: none; color: #fff; }
         .btn-fav { color: var(--accent); border-color: var(--accent); }
 
         /* RESULTADOS & FAVORITOS */
         .list-container {
-            display: none; background: #181818; border: 1px solid var(--border-color);
+            display: none; background: var(--input-bg); border: 1px solid var(--border-color);
             border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
         }
         .list-header {
-            background: #252525; padding: 10px 12px; font-size: 0.85rem; font-weight: 600;
+            background: var(--panel-color); padding: 10px 12px; font-size: 0.85rem; font-weight: 600;
             display: flex; justify-content: space-between; align-items: center;
             cursor: pointer; border-bottom: 1px solid var(--border-color); color: var(--text-dim);
         }
@@ -87,11 +101,11 @@
         .scroll-list.hidden { max-height: 0; padding: 0; }
 
         .video-item {
-            display: flex; gap: 10px; padding: 8px; background: var(--input-bg); 
+            display: flex; gap: 10px; padding: 8px; background: var(--panel-color); 
             border-radius: 6px; cursor: pointer; align-items: center; transition: background 0.2s;
-            position: relative;
+            position: relative; border: 1px solid var(--border-color);
         }
-        .video-item:active { background: #3a3a3a; }
+        .video-item:active { filter: brightness(0.95); }
         .video-thumb-wrapper { position: relative; width: 110px; height: 62px; flex-shrink: 0; }
         .video-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
         .video-duration {
@@ -100,7 +114,7 @@
             font-size: 0.65rem; padding: 2px 4px; border-radius: 3px;
         }
         .video-info { flex-grow: 1; overflow: hidden; }
-        .video-title { font-size: 0.85rem; line-height: 1.3; margin-bottom: 4px; color: #fff; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .video-title { font-size: 0.85rem; line-height: 1.3; margin-bottom: 4px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--text-main); }
         .video-channel { font-size: 0.75rem; color: var(--text-dim); }
         .btn-del-fav {
             background: #c0392b; color: #fff; border: none; padding: 5px 10px;
@@ -124,7 +138,7 @@
             display: flex; flex-direction: column; align-items: center; gap: 5px;
             transition: background 0.2s;
         }
-        .file-label:active { background: #333; }
+        .file-label:active { filter: brightness(0.95); }
         .file-label span { font-size: 1.2rem; }
 
         .btn-external {
@@ -134,37 +148,44 @@
             text-decoration: none;
         }
         .btn-yt-dl { background: #c0392b; } 
-        .btn-local-dl { background: #3498db; }
         
         .btn-reset { 
-            background: #222; border: 1px solid #444; color: #e74c3c; width: 100%; 
+            background: var(--input-bg); border: 1px solid var(--border-color); color: #e74c3c; width: 100%; 
             padding: 10px; border-radius: var(--radius); font-weight: bold; margin-top: 5px;
         }
         
         #btn-fav-current {
-            background: #2ecc71; color: #fff; width: 100%; padding: 10px;
+            background: var(--success); color: #fff; width: 100%; padding: 10px;
             border-radius: var(--radius); font-weight: bold; margin-bottom: 10px;
             border: none; display: none; cursor: pointer;
         }
+        
+        /* BOTÃO DE BAIXAR VOCABULÁRIO */
+        #btn-dl-vocab {
+            background: #8e44ad; color: #fff; width: 100%; padding: 10px;
+            border-radius: var(--radius); font-weight: bold; margin-top: 5px; margin-bottom: 10px;
+            border: none; cursor: pointer;
+        }
 
         #resume-status { 
-            font-size: 0.75rem; color: #2ecc71; text-align: center; margin: 8px 0; display: none; 
+            font-size: 0.75rem; color: var(--success); text-align: center; margin: 8px 0; display: none; 
             background: rgba(46, 204, 113, 0.1); padding: 4px; border-radius: 4px;
         }
 
-        /* ESTILOS */
+        /* ESTILOS (Font/Cor) */
         #style-controls {
             display: flex; justify-content: space-between; align-items: center;
-            background: #252525; padding: 8px; border-radius: var(--radius);
+            background: var(--input-bg); padding: 8px; border-radius: var(--radius);
         }
         .style-group { display: flex; align-items: center; gap: 8px; }
         .font-btn {
-            background: #333; color: #fff; border: 1px solid #444; width: 32px; height: 32px;
-            border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            background: var(--panel-color); color: var(--text-main); border: 1px solid var(--border-color); 
+            width: 32px; height: 32px; border-radius: 4px; font-weight: bold; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
         .color-picker-wrapper { 
-            display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #aaa; 
-            background: #333; padding: 2px 6px; border-radius: 4px;
+            display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--text-dim); 
+            background: var(--panel-color); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color);
         }
         input[type="color"] { border: none; width: 20px; height: 20px; background: none; padding: 0; cursor: pointer; }
 
@@ -189,13 +210,10 @@
             backdrop-filter: blur(4px);
         }
 
-        /* --- LEGENDAS (MODO SEGURO) --- */
+        /* --- LEGENDAS --- */
         #subtitle-container {
-            position: absolute; 
-            /* Posição padrão segura */
-            bottom: 12%; left: 50%; transform: translateX(-50%);
-            width: auto; min-width: 80%; max-width: 96%; 
-            z-index: 100; /* Z-Index bem alto para não sumir */
+            position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
+            width: auto; min-width: 80%; max-width: 96%; z-index: 20; 
             display: flex; flex-direction: column; align-items: center;
         }
         .subtitle-box {
@@ -203,25 +221,16 @@
             padding: 0 14px 10px 14px; border-radius: 12px;
             pointer-events: auto; user-select: none; -webkit-user-select: none; touch-action: none; 
             line-height: 1.45; text-align: center; position: relative;
-            /* Removemos transição de posição para o drag ser imediato */
             transition: background-color 0.3s, color 0.3s; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             font-size: 1.2rem; backdrop-filter: blur(2px);
         }
         
-        /* BARRINHA MELHORADA (Área de toque invisível) */
         #drag-handle {
-            width: 50px; height: 4px; 
-            background-color: rgba(255,255,255,0.3);
-            margin: 6px auto 8px auto; border-radius: 10px; cursor: move;
-            position: relative;
+            width: 50px; height: 4px; background-color: rgba(255,255,255,0.3);
+            margin: 6px auto 8px auto; border-radius: 10px; cursor: move; position: relative;
         }
-        /* Hit-box invisível gigante para facilitar o toque */
-        #drag-handle::after {
-            content: ''; position: absolute;
-            top: -20px; bottom: -20px; left: -40px; right: -40px;
-            background: transparent;
-        }
+        #drag-handle::after { content: ''; position: absolute; top: -20px; bottom: -20px; left: -40px; right: -40px; }
 
         /* PALAVRAS */
         .word {
@@ -237,18 +246,25 @@
             font-size: 12px; cursor: pointer; vertical-align: middle; opacity: 0.9;
         }
 
+        /* CARD TRADUÇÃO APRIMORADO */
         #translation-card {
             display: none; position: absolute; top: 10%; left: 50%;
             transform: translateX(-50%); width: 90%;
-            background: rgba(255, 255, 255, 0.95); color: #222;
+            background: rgba(255, 255, 255, 0.98); color: #222;
             padding: 16px; border-radius: 12px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.6); z-index: 100;
-            backdrop-filter: blur(8px); text-align: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5); z-index: 100;
+            text-align: center; border: 1px solid #ccc;
         }
         #phrase-orig { font-weight: bold; color: #555; margin-bottom: 6px; font-size: 0.9rem; }
-        #phrase-trans { font-size: 1.3rem; font-weight: 800; color: #000; line-height: 1.2; }
-        #close-trans { margin-top: 12px; padding: 8px 20px; background: #eee; border: none; border-radius: 6px; font-weight: bold; color: #333; }
+        #phrase-trans { font-size: 1.3rem; font-weight: 800; color: #000; line-height: 1.2; margin-bottom: 15px; }
         
+        /* Botões do Card */
+        .trans-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .btn-card { padding: 8px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
+        #btn-close-trans { background: #eee; color: #333; }
+        #btn-save-vocab { background: #3498db; color: #fff; }
+        #btn-google-ext { background: #fff; border: 1px solid #ccc; color: #333; }
+
         #gesture-feedback {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             font-size: 4rem; opacity: 0; transition: opacity 0.3s; pointer-events: none;
@@ -258,7 +274,6 @@
         @media (orientation: landscape) {
             #controls-wrapper { display: none; }
             #ui-toggle-bar { display: none; }
-            /* Z-index máximo na horizontal */
             #subtitle-container { bottom: 8%; z-index: 9999; }
         }
     </style>
@@ -269,12 +284,12 @@
         <div class="control-group">
             <input type="text" id="yt-search-input" class="modern-input" placeholder="YouTube (Link ou Busca)...">
             <button class="icon-btn btn-primary" onclick="initSearch()">🔍</button>
-            <button class="icon-btn btn-fav" onclick="toggleFavorites()" title="Meus Favoritos">⭐</button>
-            <button class="icon-btn" onclick="openApiConfig()">🔑</button>
+            <button class="icon-btn btn-fav" onclick="toggleFavorites()" title="Favoritos">⭐</button>
+            <button class="icon-btn" onclick="toggleTheme()" title="Mudar Tema">🌗</button> <button class="icon-btn" onclick="openApiConfig()">🔑</button>
         </div>
         
         <div id="api-key-config">
-            <p style="margin:0 0 5px 0; color:#fff;">⚠️ <b>API Key YouTube</b> necessária para busca:</p>
+            <p style="margin:0 0 5px 0; color:#888;">⚠️ <b>API Key YouTube</b> necessária para busca:</p>
             <input type="text" id="api-key-input" class="modern-input" placeholder="Cole sua API Key aqui">
             <button class="api-save-btn" onclick="saveApiKey()">Salvar</button>
             <button class="api-save-btn" onclick="document.getElementById('api-key-config').style.display='none'" style="background:#444; color:#fff;">Fechar</button>
@@ -309,10 +324,11 @@
             </label>
         </div>
 
-        <div class="grid-row">
-            <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">⬇️ YouTube (DownSub)</button>
-            <button class="btn-external btn-local-dl" onclick="searchLocalSubsOnGoogle()">🔍 Buscar Legenda Local</button>
+        <div class="grid-row" style="grid-template-columns: 1fr;">
+            <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">⬇️ Baixar Legenda YouTube (DownSub)</button>
         </div>
+        
+        <button id="btn-dl-vocab" onclick="downloadVocabulary()">📥 Baixar Lista de Vocabulário (.txt)</button>
 
         <div id="resume-status"></div>
         
@@ -349,13 +365,61 @@
         <div id="translation-card">
             <div id="phrase-orig">Original</div>
             <div id="phrase-trans">Tradução...</div>
-            <button id="close-trans" onclick="document.getElementById('translation-card').style.display='none'">Fechar</button>
+            <div class="trans-actions">
+                <button id="btn-save-vocab" class="btn-card" onclick="saveCurrentVocab()">💾 Salvar</button>
+                <button id="btn-google-ext" class="btn-card" onclick="openGoogleTranslate()">G-Tradutor</button>
+                <button id="btn-close-trans" class="btn-card" onclick="document.getElementById('translation-card').style.display='none'">Fechar</button>
+            </div>
         </div>
     </div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
+        // --- GERENCIADOR DE VOCABULÁRIO (NOVO) ---
+        let vocabList = JSON.parse(localStorage.getItem('ejoy_vocab')) || [];
+        let currentTranslateSource = ""; // Guarda a frase original atual
+
+        function saveCurrentVocab() {
+            if(!currentTranslateSource) return;
+            // Evita duplicatas
+            if(!vocabList.includes(currentTranslateSource)) {
+                vocabList.push(currentTranslateSource);
+                localStorage.setItem('ejoy_vocab', JSON.stringify(vocabList));
+                document.getElementById('btn-save-vocab').innerText = "✅ Salvo!";
+                setTimeout(() => document.getElementById('btn-save-vocab').innerText = "💾 Salvar", 2000);
+            } else {
+                alert("Termo já salvo!");
+            }
+        }
+
+        function downloadVocabulary() {
+            if(vocabList.length === 0) { alert("Sua lista de vocabulário está vazia. Traduza e salve frases primeiro!"); return; }
+            
+            const textContent = vocabList.join('\n');
+            const blob = new Blob([textContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'meu_vocabulario_ingles.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function openGoogleTranslate() {
+            if(!currentTranslateSource) return;
+            window.open(`https://translate.google.com/?sl=en&tl=pt&text=${encodeURIComponent(currentTranslateSource)}&op=translate`, '_blank');
+        }
+
+        // --- TEMA CLARO/ESCURO ---
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            localStorage.setItem('ejoy_theme', isLight ? 'light' : 'dark');
+        }
+
         // --- GERENCIADOR DE FAVORITOS ---
         let favorites = JSON.parse(localStorage.getItem('ejoy_favs')) || [];
         let currentPlayingYT = null;
@@ -392,17 +456,10 @@
             }
         }
 
-        // --- LINKS EXTERNOS ---
         function openExternalDownSub() {
             const url = localStorage.getItem('ejoy_ytUrl');
             if(playerType !== 'youtube' || !url) { alert("Carregue um vídeo do YouTube primeiro."); return; }
             window.open(`https://downsub.com/?url=${encodeURIComponent(url)}`, '_blank');
-        }
-        function searchLocalSubsOnGoogle() {
-            const filename = localStorage.getItem('ejoy_vidName');
-            if(playerType !== 'local' || !filename) { alert("Carregue um vídeo local primeiro."); return; }
-            let cleanName = filename.replace(/\.(mp4|mkv|avi|mov)$/i, '');
-            window.open(`https://www.google.com/search?q=${encodeURIComponent(cleanName + ' legenda português download')}`, '_blank');
         }
 
         // --- LÓGICA PRINCIPAL ---
@@ -516,9 +573,11 @@
         }
 
         resultsList.addEventListener('scroll', () => { if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50 && nextPageToken && !isFetching) fetchVideos(); });
+        
         function loadYouTubeFromInput() {
             const url = ytInput.value; const videoId = extractVideoID(url);
-            if(!videoId) { alert("Link inválido."); return; } loadYouTube(videoId, "Link Direto", "");
+            if(!videoId) { alert("Link inválido."); return; } 
+            loadYouTube(videoId, "Link Direto", "");
         }
 
         function resetApp() {
@@ -529,6 +588,7 @@
         }
         
         function onYouTubeIframeAPIReady() {}
+        
         function loadYouTube(videoId, title, thumb) {
             subtitles = []; subContent.innerHTML = ""; playerType = 'youtube';
             if(currentVideoURL) { URL.revokeObjectURL(currentVideoURL); currentVideoURL = null; }
@@ -538,7 +598,9 @@
             currentPlayingYT = { id: videoId, title: title || "Vídeo", thumb: thumb || "" };
             btnFavCurrent.style.display = 'block';
 
-            localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`); localStorage.setItem('ejoy_mode', 'youtube');
+            localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`); 
+            localStorage.setItem('ejoy_mode', 'youtube');
+            
             if(ytPlayer) { ytPlayer.loadVideoById(videoId); } 
             else { ytPlayer = new YT.Player('yt-player', { height: '100%', width: '100%', videoId: videoId, playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, }); }
             startYTSync();
@@ -565,21 +627,20 @@
             const savedSubs = localStorage.getItem('ejoy_subs');
             if (savedSubs) try { subtitles = JSON.parse(savedSubs); resumeStatus.style.display='block'; resumeStatus.innerText='✅ Legenda'; } catch(e){}
             if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) document.getElementById('api-key-config').style.display='block';
-            renderFavorites();
             
-            // Listener de orientação para corrigir posição da legenda
+            // Carregar Tema
+            if(localStorage.getItem('ejoy_theme') === 'light') document.body.classList.add('light-mode');
+            
+            // Correção Rotação
             window.addEventListener('resize', fixSubtitlePosition);
+            
+            renderFavorites();
         };
         
-        // --- FUNÇÃO PARA CORRIGIR POSIÇÃO NA ROTAÇÃO ---
         function fixSubtitlePosition() {
             const rect = subContainer.getBoundingClientRect();
-            // Se a legenda estiver fora da tela (top > windowHeight), reseta
             if (rect.top > window.innerHeight - 50 || rect.top < 0) {
-                subContainer.style.top = 'auto';
-                subContainer.style.left = '50%';
-                subContainer.style.bottom = '12%';
-                subContainer.style.transform = 'translateX(-50%)';
+                subContainer.style.top = 'auto'; subContainer.style.left = '50%'; subContainer.style.bottom = '12%'; subContainer.style.transform = 'translateX(-50%)';
             }
         }
 
@@ -641,12 +702,15 @@
             const words = text.split(' ');
             words.forEach((w, i) => {
                 const span = document.createElement('span');
-                span.textContent = w + ' '; span.className = 'word'; span.dataset.index = i;
+                span.textContent = w + ' '; 
+                span.className = 'word'; 
+                span.dataset.index = i;
                 span.dataset.raw = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g,"");
                 subContent.appendChild(span);
             });
             const btn = document.createElement('span');
             btn.className = 'translate-btn'; btn.innerHTML = '🌐';
+            
             btn.addEventListener('touchstart', (e) => {
                 e.stopPropagation(); e.preventDefault(); pauseAnyPlayer();
                 isSelecting = false; document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
@@ -698,6 +762,7 @@
             subBox.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.7)`;
         });
 
+        // --- SELEÇÃO DE TEXTO ---
         subContent.addEventListener('touchstart', (e) => {
             if(e.target.classList.contains('translate-btn')) return;
             const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
@@ -742,12 +807,19 @@
         }
 
         async function translateText(src, dsp) {
-            transCard.style.display = 'block'; transOrig.textContent = dsp; transRes.className = 'loading'; transRes.textContent = '...';
+            currentTranslateSource = src; // Salva para o botão
+            transCard.style.display = 'block'; 
+            transOrig.textContent = dsp; 
+            transRes.className = 'loading'; 
+            transRes.textContent = '...';
+            document.getElementById('btn-save-vocab').innerText = "💾 Salvar"; // Reset botão
+            
             try {
+                // Força par en|pt-BR para melhor qualidade
                 const u = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(src)}&langpair=en|pt-BR`;
                 const r = await fetch(u); const d = await r.json();
                 if(d.responseData) transRes.textContent = d.responseData.translatedText;
-            } catch (e) { transRes.textContent = "Erro"; }
+            } catch (e) { transRes.textContent = "Erro na rede"; }
         }
 
         const gestureZone = document.getElementById('gesture-layer'); 

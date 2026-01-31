@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V23.0 - Favorites & Precision)</title>
+    <title>Player Estudo Pro (V24.0 - Fix Spacing/Local)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN --- */
         :root {
@@ -102,8 +102,6 @@
         .video-info { flex-grow: 1; overflow: hidden; }
         .video-title { font-size: 0.85rem; line-height: 1.3; margin-bottom: 4px; color: #fff; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .video-channel { font-size: 0.75rem; color: var(--text-dim); }
-        
-        /* Botão de excluir favorito */
         .btn-del-fav {
             background: #c0392b; color: #fff; border: none; padding: 5px 10px;
             border-radius: 4px; font-size: 0.7rem; margin-left: 5px;
@@ -136,19 +134,17 @@
             text-decoration: none;
         }
         .btn-yt-dl { background: #c0392b; } 
-        .btn-local-dl { background: #3498db; } /* Azul Google */
+        .btn-local-dl { background: #3498db; }
         
         .btn-reset { 
             background: #222; border: 1px solid #444; color: #e74c3c; width: 100%; 
             padding: 10px; border-radius: var(--radius); font-weight: bold; margin-top: 5px;
         }
         
-        /* Botão Favoritar Atual */
         #btn-fav-current {
             background: #2ecc71; color: #fff; width: 100%; padding: 10px;
             border-radius: var(--radius); font-weight: bold; margin-bottom: 10px;
-            border: none; display: none; /* Só aparece quando tem vídeo YT */
-            cursor: pointer;
+            border: none; display: none; cursor: pointer;
         }
 
         #resume-status { 
@@ -214,12 +210,12 @@
             margin: 6px auto 8px auto; border-radius: 10px; cursor: move;
         }
 
-        /* PALAVRAS (MELHORIA TOUCH) */
+        /* PALAVRAS (CORREÇÃO DE ESPAÇAMENTO V24) */
         .word {
             font-size: 1em; 
-            /* Aumenta padding vertical para o dedo acertar melhor */
-            padding: 8px 1px; margin: -4px 0;
-            border-radius: 3px; display: inline-block; cursor: pointer;
+            /* Voltei ao padrão inline para ter espaço natural */
+            padding: 2px 1px; 
+            border-radius: 4px; display: inline; cursor: pointer;
             box-decoration-break: clone; -webkit-box-decoration-break: clone;
         }
         .word.selected { background-color: var(--accent) !important; color: #000 !important; }
@@ -303,12 +299,8 @@
         </div>
 
         <div class="grid-row">
-            <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">
-                ⬇️ YouTube (DownSub)
-            </button>
-            <button class="btn-external btn-local-dl" onclick="searchLocalSubsOnGoogle()">
-                🔍 Buscar Legenda Local (Google)
-            </button>
+            <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">⬇️ YouTube (DownSub)</button>
+            <button class="btn-external btn-local-dl" onclick="searchLocalSubsOnGoogle()">🔍 Buscar Legenda Local</button>
         </div>
 
         <div id="resume-status"></div>
@@ -353,67 +345,39 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --- GERENCIADOR DE FAVORITOS (NOVO) ---
+        // --- GERENCIADOR DE FAVORITOS ---
         let favorites = JSON.parse(localStorage.getItem('ejoy_favs')) || [];
-        let currentPlayingYT = null; // Guarda info do video atual {id, title, thumb}
+        let currentPlayingYT = null;
 
         function toggleFavorites() {
             const container = document.getElementById('favorites-container');
-            if (container.style.display === 'block') {
-                container.style.display = 'none';
-            } else {
-                container.style.display = 'block';
-                renderFavorites();
-            }
+            container.style.display = container.style.display === 'block' ? 'none' : 'block';
+            if(container.style.display === 'block') renderFavorites();
         }
 
         function renderFavorites() {
             const list = document.getElementById('favorites-list');
             list.innerHTML = "";
-            if (favorites.length === 0) {
-                list.innerHTML = "<div style='padding:10px; text-align:center; color:#777;'>Sem favoritos ainda.</div>";
-                return;
-            }
+            if (favorites.length === 0) { list.innerHTML = "<div style='padding:10px; text-align:center; color:#777;'>Sem favoritos ainda.</div>"; return; }
             favorites.forEach((fav, index) => {
-                const div = document.createElement('div');
-                div.className = 'video-item';
-                div.innerHTML = `
-                    <div class="video-thumb-wrapper">
-                        <img src="${fav.thumb}" class="video-thumb">
-                    </div>
-                    <div class="video-info">
-                        <div class="video-title">${fav.title}</div>
-                    </div>
-                    <button class="btn-del-fav" onclick="removeFavorite(event, ${index})">🗑️</button>
-                `;
-                // Clique no item carrega o video
-                div.onclick = (e) => {
-                    if(e.target.classList.contains('btn-del-fav')) return;
-                    loadYouTube(fav.id, fav.title, fav.thumb);
-                };
+                const div = document.createElement('div'); div.className = 'video-item';
+                div.innerHTML = `<div class="video-thumb-wrapper"><img src="${fav.thumb}" class="video-thumb"></div><div class="video-info"><div class="video-title">${fav.title}</div></div><button class="btn-del-fav" onclick="removeFavorite(event, ${index})">🗑️</button>`;
+                div.onclick = (e) => { if(!e.target.classList.contains('btn-del-fav')) loadYouTube(fav.id, fav.title, fav.thumb); };
                 list.appendChild(div);
             });
         }
 
         function addCurrentToFavorites() {
             if (!currentPlayingYT) return;
-            // Evita duplicatas
-            if (favorites.some(f => f.id === currentPlayingYT.id)) {
-                alert("Já está nos favoritos!");
-                return;
-            }
-            favorites.push(currentPlayingYT);
-            localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
-            alert("Adicionado aos Favoritos!");
-            renderFavorites();
+            if (favorites.some(f => f.id === currentPlayingYT.id)) { alert("Já está nos favoritos!"); return; }
+            favorites.push(currentPlayingYT); localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
+            alert("Adicionado aos Favoritos!"); renderFavorites();
         }
 
         function removeFavorite(e, index) {
             e.stopPropagation();
             if(confirm("Remover dos favoritos?")) {
-                favorites.splice(index, 1);
-                localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
-                renderFavorites();
+                favorites.splice(index, 1); localStorage.setItem('ejoy_favs', JSON.stringify(favorites)); renderFavorites();
             }
         }
 
@@ -423,18 +387,11 @@
             if(playerType !== 'youtube' || !url) { alert("Carregue um vídeo do YouTube primeiro."); return; }
             window.open(`https://downsub.com/?url=${encodeURIComponent(url)}`, '_blank');
         }
-
-        // CORREÇÃO: Busca genérica no Google
         function searchLocalSubsOnGoogle() {
             const filename = localStorage.getItem('ejoy_vidName');
             if(playerType !== 'local' || !filename) { alert("Carregue um vídeo local primeiro."); return; }
-            
-            // Remove extensões comuns para limpar o nome
             let cleanName = filename.replace(/\.(mp4|mkv|avi|mov)$/i, '');
-            // Cria query de busca
-            let query = `${cleanName} legenda português download`;
-            
-            window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(cleanName + ' legenda português download')}`, '_blank');
         }
 
         // --- LÓGICA PRINCIPAL ---
@@ -443,7 +400,6 @@
         const gestureLayer = document.getElementById('gesture-layer');
         const unlockBtn = document.getElementById('unlock-yt-btn');
         const ytInput = document.getElementById('yt-search-input');
-        
         const resultsContainer = document.getElementById('search-results-container');
         const resultsList = document.getElementById('search-results-list');
         const apiKeyConfig = document.getElementById('api-key-config');
@@ -462,20 +418,17 @@
 
         let subtitles = [];
         let lastRenderedText = "";
-        
         let playerType = 'local';
         let ytPlayer = null;
         let ytTimer = null;
         let ytControlsLocked = true;
-        
-        // DRAG & SELECTION VARS
         let isDragging = false;
         let dragStartX = 0; let dragStartY = 0;
         let initialTop = 0; let initialLeft = 0;
         
-        // SELECTION LOGIC (PRECISE)
+        // Touch Vars
         let isSelecting = false;
-        let selectionStartIndex = -1; // Onde o dedo tocou primeiro
+        let selectionStartIndex = -1;
 
         let YOUTUBE_API_KEY = localStorage.getItem('ejoy_api_key') || "";
         let nextPageToken = "";
@@ -488,31 +441,23 @@
             currentFontSize += delta; if (currentFontSize < 0.5) currentFontSize = 0.5; if (currentFontSize > 3.0) currentFontSize = 3.0;
             subBox.style.fontSize = currentFontSize + 'rem';
         }
-
         function toggleMainUI() {
             const controls = document.getElementById('controls-wrapper');
             const bar = document.getElementById('ui-toggle-bar');
             if (controls.style.display === 'none') { controls.style.display = 'block'; bar.innerText = '🔼'; } 
             else { controls.style.display = 'none'; bar.innerText = '🔽'; }
         }
-
         function saveApiKey() {
             const key = document.getElementById('api-key-input').value.trim();
             if(key) { YOUTUBE_API_KEY = key; localStorage.setItem('ejoy_api_key', key); apiKeyConfig.style.display = 'none'; alert("Chave Salva!"); }
         }
         function openApiConfig() { apiKeyConfig.style.display = 'block'; document.getElementById('api-key-input').value = YOUTUBE_API_KEY; }
-
         function toggleContainer(listId, arrowId) {
-            const list = document.getElementById(listId);
-            const arrow = document.getElementById(arrowId);
-            if (list.classList.contains('hidden')) {
-                list.classList.remove('hidden'); arrow.classList.remove('collapsed');
-            } else {
-                list.classList.add('hidden'); arrow.classList.add('collapsed');
-            }
+            const list = document.getElementById(listId); const arrow = document.getElementById(arrowId);
+            if (list.classList.contains('hidden')) { list.classList.remove('hidden'); arrow.classList.remove('collapsed'); } 
+            else { list.classList.add('hidden'); arrow.classList.add('collapsed'); }
         }
 
-        // --- BUSCA YOUTUBE ---
         async function initSearch() {
             const query = ytInput.value.trim();
             if (query.includes('youtube.com') || query.includes('youtu.be')) { loadYouTubeFromInput(); return; }
@@ -546,9 +491,7 @@
                     const duration = videosData[vidId] || "";
                     const div = document.createElement('div'); div.className = 'video-item';
                     div.innerHTML = `<div class="video-thumb-wrapper"><img src="${thumb}" class="video-thumb">${duration ? `<span class="video-duration">${duration}</span>` : ''}</div><div class="video-info"><div class="video-title">${title}</div><div class="video-channel">${channel}</div></div>`;
-                    div.onclick = () => { 
-                        loadYouTube(vidId, title, thumb); 
-                    };
+                    div.onclick = () => { loadYouTube(vidId, title, thumb); };
                     resultsList.appendChild(div);
                 });
             } catch (err) { loader.innerText = "Erro de conexão"; } finally { isFetching = false; }
@@ -563,11 +506,9 @@
         }
 
         resultsList.addEventListener('scroll', () => { if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50 && nextPageToken && !isFetching) fetchVideos(); });
-        
         function loadYouTubeFromInput() {
             const url = ytInput.value; const videoId = extractVideoID(url);
-            if(!videoId) { alert("Link inválido."); return; } 
-            loadYouTube(videoId, "Vídeo via Link", "");
+            if(!videoId) { alert("Link inválido."); return; } loadYouTube(videoId, "Link Direto", "");
         }
 
         function resetApp() {
@@ -578,26 +519,20 @@
         }
         
         function onYouTubeIframeAPIReady() {}
-        
-        // MODIFICADO: Aceita Title/Thumb para favoritos
         function loadYouTube(videoId, title, thumb) {
             subtitles = []; subContent.innerHTML = ""; playerType = 'youtube';
             if(currentVideoURL) { URL.revokeObjectURL(currentVideoURL); currentVideoURL = null; }
             video.removeAttribute('src'); video.load(); video.style.display = 'none';
             ytContainer.style.display = 'flex'; gestureLayer.style.display = 'block'; unlockBtn.style.display = 'block'; ytControlsLocked = true;
             
-            // Salva dados atuais
-            currentPlayingYT = { id: videoId, title: title || "Vídeo YouTube", thumb: thumb || "" };
-            btnFavCurrent.style.display = 'block'; // Mostra botão favoritar
+            currentPlayingYT = { id: videoId, title: title || "Vídeo", thumb: thumb || "" };
+            btnFavCurrent.style.display = 'block';
 
-            localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`); 
-            localStorage.setItem('ejoy_mode', 'youtube');
-            
+            localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`); localStorage.setItem('ejoy_mode', 'youtube');
             if(ytPlayer) { ytPlayer.loadVideoById(videoId); } 
             else { ytPlayer = new YT.Player('yt-player', { height: '100%', width: '100%', videoId: videoId, playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, }); }
             startYTSync();
         }
-
         function toggleYtControls() {
             const iframe = document.querySelector('iframe');
             if(ytControlsLocked) { gestureLayer.style.display = 'none'; iframe.style.pointerEvents = 'auto'; unlockBtn.innerText = "🔒 Gestos"; ytControlsLocked = false; }
@@ -622,6 +557,15 @@
             if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) document.getElementById('api-key-config').style.display='block';
             renderFavorites();
         };
+
+        // --- LÓGICA VÍDEO LOCAL (FIXED V24) ---
+        // Adiciona listener de update para vídeo local
+        video.addEventListener('timeupdate', () => {
+            if (playerType === 'local') {
+                localStorage.setItem('ejoy_time', video.currentTime);
+                renderLogic(video.currentTime);
+            }
+        });
 
         document.getElementById('videoInput').onchange = e => {
             const file = e.target.files[0];
@@ -674,14 +618,15 @@
             const words = text.split(' ');
             words.forEach((w, i) => {
                 const span = document.createElement('span');
-                span.textContent = w + ' '; span.className = 'word'; span.dataset.index = i;
+                // Adiciona espaço manualmente após a palavra
+                span.textContent = w + ' '; 
+                span.className = 'word'; 
+                span.dataset.index = i;
                 span.dataset.raw = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g,"");
                 subContent.appendChild(span);
             });
             const btn = document.createElement('span');
             btn.className = 'translate-btn'; btn.innerHTML = '🌐';
-            
-            // CORREÇÃO: Tradução botão (tap)
             btn.addEventListener('touchstart', (e) => {
                 e.stopPropagation(); e.preventDefault(); pauseAnyPlayer();
                 isSelecting = false; document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
@@ -707,7 +652,6 @@
             return 0;
         }
 
-        // DRAG HANDLER
         dragHandle.addEventListener('touchstart', dragStart, {passive: false});
         dragHandle.addEventListener('touchmove', dragMove, {passive: false});
         dragHandle.addEventListener('touchend', dragEnd);
@@ -734,10 +678,9 @@
             subBox.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.7)`;
         });
 
-        // --- SELEÇÃO DE TEXTO (RANGE PRECISO) ---
+        // --- SELEÇÃO DE TEXTO ---
         subContent.addEventListener('touchstart', (e) => {
             if(e.target.classList.contains('translate-btn')) return;
-            // Inicia seleção
             const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
             if (el && el.classList.contains('word')) {
                 isSelecting = true;
@@ -749,8 +692,7 @@
         }, {passive: false});
 
         subContent.addEventListener('touchmove', (e) => {
-            if (!isSelecting) return; 
-            e.preventDefault(); 
+            if (!isSelecting) return; e.preventDefault(); 
             const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
             if (el && el.classList.contains('word')) {
                 const currentIndex = parseInt(el.dataset.index);
@@ -759,25 +701,15 @@
         }, {passive: false});
 
         subContent.addEventListener('touchend', () => {
-            if(isSelecting) {
-                isSelecting = false;
-                translateSelection();
-            }
+            if(isSelecting) { isSelecting = false; translateSelection(); }
         });
 
         function updateSelectionRange(endIndex) {
-            // Limpa tudo
             document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
-            
-            // Define min e max para o loop
             const start = Math.min(selectionStartIndex, endIndex);
             const end = Math.max(selectionStartIndex, endIndex);
-            
-            // Seleciona range
             const words = subContent.querySelectorAll('.word');
-            for(let i=start; i<=end; i++) {
-                if(words[i]) words[i].classList.add('selected');
-            }
+            for(let i=start; i<=end; i++) { if(words[i]) words[i].classList.add('selected'); }
         }
 
         function translateSelection() {
@@ -787,10 +719,7 @@
             const txt = wordsArray.map(el => el.dataset.raw).join(' ');
             const display = wordsArray.map(el => el.textContent).join('');
             translateText(txt, display);
-            // Delay pra limpar
-            setTimeout(() => {
-                selected.forEach(el => el.classList.remove('selected'));
-            }, 1500);
+            setTimeout(() => { selected.forEach(el => el.classList.remove('selected')); }, 1500);
         }
 
         async function translateText(src, dsp) {

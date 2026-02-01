@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V26.0 - Vocab & Themes)</title>
+    <title>Player Estudo Pro (V26.1 - Bing & Resume)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN (Temas) --- */
         :root {
@@ -227,7 +227,7 @@
         }
         
         #drag-handle {
-            width: 50px; height: 4px; background-color: rgba(255,255,255,0.3);
+            width: 50px; height: 4px; background-color: rgba(255,255,255,0.2);
             margin: 6px auto 8px auto; border-radius: 10px; cursor: move; position: relative;
         }
         #drag-handle::after { content: ''; position: absolute; top: -20px; bottom: -20px; left: -40px; right: -40px; }
@@ -250,7 +250,7 @@
         #translation-card {
             display: none; position: absolute; top: 10%; left: 50%;
             transform: translateX(-50%); width: 90%;
-            background: rgba(255, 255, 255, 0.98); color: #222;
+            background: rgba(255, 255, 255, 0.95); color: #222;
             padding: 16px; border-radius: 12px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.5); z-index: 100;
             text-align: center; border: 1px solid #ccc;
@@ -263,7 +263,7 @@
         .btn-card { padding: 8px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
         #btn-close-trans { background: #eee; color: #333; }
         #btn-save-vocab { background: #3498db; color: #fff; }
-        #btn-google-ext { background: #fff; border: 1px solid #ccc; color: #333; }
+        #btn-bing-ext { background: #fff; border: 1px solid #ccc; color: #333; } /* Botão Bing */
 
         #gesture-feedback {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -284,7 +284,7 @@
         <div class="control-group">
             <input type="text" id="yt-search-input" class="modern-input" placeholder="YouTube (Link ou Busca)...">
             <button class="icon-btn btn-primary" onclick="initSearch()">🔍</button>
-            <button class="icon-btn btn-fav" onclick="toggleFavorites()" title="Favoritos">⭐</button>
+            <button class="icon-btn btn-fav" onclick="toggleFavorites()" title="Meus Favoritos">⭐</button>
             <button class="icon-btn" onclick="toggleTheme()" title="Mudar Tema">🌗</button> <button class="icon-btn" onclick="openApiConfig()">🔑</button>
         </div>
         
@@ -367,7 +367,7 @@
             <div id="phrase-trans">Tradução...</div>
             <div class="trans-actions">
                 <button id="btn-save-vocab" class="btn-card" onclick="saveCurrentVocab()">💾 Salvar</button>
-                <button id="btn-google-ext" class="btn-card" onclick="openGoogleTranslate()">G-Tradutor</button>
+                <button id="btn-bing-ext" class="btn-card" onclick="openBingTranslator()">Bing</button>
                 <button id="btn-close-trans" class="btn-card" onclick="document.getElementById('translation-card').style.display='none'">Fechar</button>
             </div>
         </div>
@@ -376,502 +376,310 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --- GERENCIADOR DE VOCABULÁRIO (NOVO) ---
+        // --- BING TRANSLATOR ---
+        function openBingTranslator() {
+            if(!currentTranslateSource) return;
+            window.open(`https://www.bing.com/translator?from=en&to=pt&text=${encodeURIComponent(currentTranslateSource)}`, '_blank');
+        }
+
+        // --- SISTEMA GERAL ---
         let vocabList = JSON.parse(localStorage.getItem('ejoy_vocab')) || [];
-        let currentTranslateSource = ""; // Guarda a frase original atual
-
-        function saveCurrentVocab() {
-            if(!currentTranslateSource) return;
-            // Evita duplicatas
-            if(!vocabList.includes(currentTranslateSource)) {
-                vocabList.push(currentTranslateSource);
-                localStorage.setItem('ejoy_vocab', JSON.stringify(vocabList));
-                document.getElementById('btn-save-vocab').innerText = "✅ Salvo!";
-                setTimeout(() => document.getElementById('btn-save-vocab').innerText = "💾 Salvar", 2000);
-            } else {
-                alert("Termo já salvo!");
-            }
-        }
-
-        function downloadVocabulary() {
-            if(vocabList.length === 0) { alert("Sua lista de vocabulário está vazia. Traduza e salve frases primeiro!"); return; }
-            
-            const textContent = vocabList.join('\n');
-            const blob = new Blob([textContent], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'meu_vocabulario_ingles.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function openGoogleTranslate() {
-            if(!currentTranslateSource) return;
-            window.open(`https://translate.google.com/?sl=en&tl=pt&text=${encodeURIComponent(currentTranslateSource)}&op=translate`, '_blank');
-        }
-
-        // --- TEMA CLARO/ESCURO ---
-        function toggleTheme() {
-            document.body.classList.toggle('light-mode');
-            const isLight = document.body.classList.contains('light-mode');
-            localStorage.setItem('ejoy_theme', isLight ? 'light' : 'dark');
-        }
-
-        // --- GERENCIADOR DE FAVORITOS ---
         let favorites = JSON.parse(localStorage.getItem('ejoy_favs')) || [];
+        // HISTÓRICO DE VÍDEOS (RESUME)
+        let videoHistory = JSON.parse(localStorage.getItem('ejoy_vid_history')) || {};
+
+        let currentTranslateSource = ""; 
         let currentPlayingYT = null;
+        let YOUTUBE_API_KEY = localStorage.getItem('ejoy_api_key') || "";
+        let currentVideoURL = null; 
+        let currentFontSize = 1.2;
+        let subtitles = [];
+        let playerType = 'local';
+        let ytPlayer = null;
+        let ytTimer = null;
+        let ytControlsLocked = true;
+        let selectionStartIndex = -1;
+        let isSelecting = false;
+        let isDragging = false;
+        let dragStartX=0, dragStartY=0, initialTop=0, initialLeft=0;
 
-        function toggleFavorites() {
-            const container = document.getElementById('favorites-container');
-            container.style.display = container.style.display === 'block' ? 'none' : 'block';
-            if(container.style.display === 'block') renderFavorites();
-        }
-
-        function renderFavorites() {
-            const list = document.getElementById('favorites-list');
-            list.innerHTML = "";
-            if (favorites.length === 0) { list.innerHTML = "<div style='padding:10px; text-align:center; color:#777;'>Sem favoritos ainda.</div>"; return; }
-            favorites.forEach((fav, index) => {
-                const div = document.createElement('div'); div.className = 'video-item';
-                div.innerHTML = `<div class="video-thumb-wrapper"><img src="${fav.thumb}" class="video-thumb"></div><div class="video-info"><div class="video-title">${fav.title}</div></div><button class="btn-del-fav" onclick="removeFavorite(event, ${index})">🗑️</button>`;
-                div.onclick = (e) => { if(!e.target.classList.contains('btn-del-fav')) loadYouTube(fav.id, fav.title, fav.thumb); };
-                list.appendChild(div);
-            });
-        }
-
-        function addCurrentToFavorites() {
-            if (!currentPlayingYT) return;
-            if (favorites.some(f => f.id === currentPlayingYT.id)) { alert("Já está nos favoritos!"); return; }
-            favorites.push(currentPlayingYT); localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
-            alert("Adicionado aos Favoritos!"); renderFavorites();
-        }
-
-        function removeFavorite(e, index) {
-            e.stopPropagation();
-            if(confirm("Remover dos favoritos?")) {
-                favorites.splice(index, 1); localStorage.setItem('ejoy_favs', JSON.stringify(favorites)); renderFavorites();
-            }
-        }
-
-        function openExternalDownSub() {
-            const url = localStorage.getItem('ejoy_ytUrl');
-            if(playerType !== 'youtube' || !url) { alert("Carregue um vídeo do YouTube primeiro."); return; }
-            window.open(`https://downsub.com/?url=${encodeURIComponent(url)}`, '_blank');
-        }
-
-        // --- LÓGICA PRINCIPAL ---
+        // Elementos
         const video = document.getElementById('mainVideo');
         const ytContainer = document.getElementById('yt-container');
         const gestureLayer = document.getElementById('gesture-layer');
         const unlockBtn = document.getElementById('unlock-yt-btn');
-        const ytInput = document.getElementById('yt-search-input');
-        const resultsContainer = document.getElementById('search-results-container');
-        const resultsList = document.getElementById('search-results-list');
-        const apiKeyConfig = document.getElementById('api-key-config');
         const subContent = document.getElementById('subtitle-content');
         const subBox = document.getElementById('subtitle-box');
         const subContainer = document.getElementById('subtitle-container');
-        const dragHandle = document.getElementById('drag-handle');
-        const resumeStatus = document.getElementById('resume-status');
         const transCard = document.getElementById('translation-card');
         const transOrig = document.getElementById('phrase-orig');
         const transRes = document.getElementById('phrase-trans');
         const gestureIcon = document.getElementById('gesture-feedback');
         const textColorInput = document.getElementById('textColor');
         const bgColorInput = document.getElementById('bgColor');
+        const apiKeyConfig = document.getElementById('api-key-config');
+        const ytInput = document.getElementById('yt-search-input');
+        const resultsList = document.getElementById('search-results-list');
+        const favoritesList = document.getElementById('favorites-list');
         const btnFavCurrent = document.getElementById('btn-fav-current');
+        const dragHandle = document.getElementById('drag-handle');
 
-        let subtitles = [];
-        let lastRenderedText = "";
-        let playerType = 'local';
-        let ytPlayer = null;
-        let ytTimer = null;
-        let ytControlsLocked = true;
-        let isDragging = false;
-        let dragStartX = 0; let dragStartY = 0;
-        let initialTop = 0; let initialLeft = 0;
-        
-        let isSelecting = false;
-        let selectionStartIndex = -1;
-
-        let YOUTUBE_API_KEY = localStorage.getItem('ejoy_api_key') || "";
-        let nextPageToken = "";
-        let currentQuery = "";
-        let isFetching = false;
-        let currentVideoURL = null; 
-        let currentFontSize = 1.2;
-
-        function changeFontSize(delta) {
-            currentFontSize += delta; if (currentFontSize < 0.5) currentFontSize = 0.5; if (currentFontSize > 3.0) currentFontSize = 3.0;
-            subBox.style.fontSize = currentFontSize + 'rem';
+        // UI Helpers
+        function changeFontSize(d) { currentFontSize+=d; if(currentFontSize<0.5)currentFontSize=0.5; if(currentFontSize>3)currentFontSize=3; subBox.style.fontSize=currentFontSize+'rem'; }
+        function toggleMainUI() { 
+            const c = document.getElementById('controls-wrapper'); const b = document.getElementById('ui-toggle-bar');
+            if(c.style.display==='none'){c.style.display='block';b.innerText='🔼'}else{c.style.display='none';b.innerText='🔽'}
         }
-        function toggleMainUI() {
-            const controls = document.getElementById('controls-wrapper');
-            const bar = document.getElementById('ui-toggle-bar');
-            if (controls.style.display === 'none') { controls.style.display = 'block'; bar.innerText = '🔼'; } 
-            else { controls.style.display = 'none'; bar.innerText = '🔽'; }
+        function toggleContainer(id, arrowId) {
+            const el = document.getElementById(id); const ar = document.getElementById(arrowId);
+            if(el.classList.contains('hidden')){el.classList.remove('hidden');ar.classList.remove('collapsed')}else{el.classList.add('hidden');ar.classList.add('collapsed')}
         }
         function saveApiKey() {
-            const key = document.getElementById('api-key-input').value.trim();
-            if(key) { YOUTUBE_API_KEY = key; localStorage.setItem('ejoy_api_key', key); apiKeyConfig.style.display = 'none'; alert("Chave Salva!"); }
+            const k = document.getElementById('api-key-input').value.trim();
+            if(k){YOUTUBE_API_KEY=k;localStorage.setItem('ejoy_api_key',k);apiKeyConfig.style.display='none';alert("Salvo!");}
         }
-        function openApiConfig() { apiKeyConfig.style.display = 'block'; document.getElementById('api-key-input').value = YOUTUBE_API_KEY; }
-        function toggleContainer(listId, arrowId) {
-            const list = document.getElementById(listId); const arrow = document.getElementById(arrowId);
-            if (list.classList.contains('hidden')) { list.classList.remove('hidden'); arrow.classList.remove('collapsed'); } 
-            else { list.classList.add('hidden'); arrow.classList.add('collapsed'); }
+        function openApiConfig(){apiKeyConfig.style.display='block';document.getElementById('api-key-input').value=YOUTUBE_API_KEY}
+        
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('ejoy_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
         }
 
+        // Vocab & Favs
+        function saveCurrentVocab() {
+            if(!currentTranslateSource)return;
+            if(!vocabList.includes(currentTranslateSource)){vocabList.push(currentTranslateSource);localStorage.setItem('ejoy_vocab',JSON.stringify(vocabList));document.getElementById('btn-save-vocab').innerText="✅";setTimeout(()=>document.getElementById('btn-save-vocab').innerText="💾 Salvar",1500);}
+            else{alert("Já salvo");}
+        }
+        function downloadVocabulary() {
+            if(!vocabList.length){alert("Vazio");return;}
+            const b=new Blob([vocabList.join('\n')],{type:'text/plain'});
+            const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='vocab.txt';document.body.appendChild(a);a.click();document.body.removeChild(a);
+        }
+        function toggleFavorites() { 
+            const c=document.getElementById('favorites-container'); c.style.display = c.style.display==='block'?'none':'block';
+            if(c.style.display==='block') renderFavorites();
+        }
+        function renderFavorites() {
+            favoritesList.innerHTML=""; if(!favorites.length){favoritesList.innerHTML="<div style='padding:10px;text-align:center'>Vazio</div>";return;}
+            favorites.forEach((fav,i)=>{
+                const d=document.createElement('div'); d.className='video-item';
+                d.innerHTML=`<img src="${fav.thumb}" class="video-thumb"><div class="video-info"><div class="video-title">${fav.title}</div></div><button class="btn-del-fav" onclick="removeFavorite(event,${i})">🗑️</button>`;
+                d.onclick=(e)=>{if(!e.target.classList.contains('btn-del-fav'))loadYouTube(fav.id,fav.title,fav.thumb)};
+                favoritesList.appendChild(d);
+            });
+        }
+        function addCurrentToFavorites() {
+            if(!currentPlayingYT)return; if(favorites.some(f=>f.id===currentPlayingYT.id)){alert("Já existe");return;}
+            favorites.push(currentPlayingYT); localStorage.setItem('ejoy_favs',JSON.stringify(favorites)); alert("Salvo!"); renderFavorites();
+        }
+        function removeFavorite(e,i){e.stopPropagation();if(confirm("Apagar?")){favorites.splice(i,1);localStorage.setItem('ejoy_favs',JSON.stringify(favorites));renderFavorites();}}
+
+        function openExternalDownSub(){const u=localStorage.getItem('ejoy_ytUrl');if(playerType!=='youtube'||!u){alert("Abra um vídeo YT");return;}window.open(`https://downsub.com/?url=${encodeURIComponent(u)}`,'_blank');}
+
+        // Busca YT
+        let nextPageToken=""; let isFetching=false;
         async function initSearch() {
-            const query = ytInput.value.trim();
-            if (query.includes('youtube.com') || query.includes('youtu.be')) { loadYouTubeFromInput(); return; }
-            if (!YOUTUBE_API_KEY) { openApiConfig(); return; }
-            if (!query) return;
-            currentQuery = query; nextPageToken = ""; resultsList.innerHTML = "";
-            resultsContainer.style.display = 'block'; resultsList.classList.remove('hidden'); 
-            await fetchVideos();
+            const q=ytInput.value.trim(); if(q.includes('youtu')){loadYouTubeFromInput();return;}
+            if(!YOUTUBE_API_KEY){openApiConfig();return;} if(!q)return;
+            nextPageToken=""; resultsList.innerHTML=""; document.getElementById('search-results-container').style.display='block';
+            resultsList.classList.remove('hidden'); await fetchVideos(q);
         }
-
-        async function fetchVideos() {
-            if (isFetching) return; isFetching = true;
-            const loader = document.createElement('div'); loader.className = 'loading-more'; loader.innerText = 'Carregando...'; resultsList.appendChild(loader);
+        async function fetchVideos(q) {
+            if(isFetching)return; isFetching=true;
+            const loader=document.createElement('div');loader.innerText="Carregando...";resultsList.appendChild(loader);
             try {
-                let searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(currentQuery)}&key=${YOUTUBE_API_KEY}`;
-                if (nextPageToken) searchUrl += `&pageToken=${nextPageToken}`;
-                const res = await fetch(searchUrl); const data = await res.json();
-                loader.remove();
-                if (data.error) { alert(`Erro API: ${data.error.message}`); return; }
-                nextPageToken = data.nextPageToken || "";
-                
-                const videoIds = data.items.map(item => item.id.videoId).join(',');
-                let videosData = {};
-                if (videoIds) {
-                    const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
-                    const resDetails = await fetch(detailsUrl); const dataDetails = await resDetails.json();
-                    if (!dataDetails.error) { dataDetails.items.forEach(v => { videosData[v.id] = parseDuration(v.contentDetails.duration); }); }
-                }
-                data.items.forEach(item => {
-                    const vidId = item.id.videoId; const title = item.snippet.title; const channel = item.snippet.channelTitle; const thumb = item.snippet.thumbnails.medium.url;
-                    const duration = videosData[vidId] || "";
-                    const div = document.createElement('div'); div.className = 'video-item';
-                    div.innerHTML = `<div class="video-thumb-wrapper"><img src="${thumb}" class="video-thumb">${duration ? `<span class="video-duration">${duration}</span>` : ''}</div><div class="video-info"><div class="video-title">${title}</div><div class="video-channel">${channel}</div></div>`;
-                    div.onclick = () => { loadYouTube(vidId, title, thumb); };
-                    resultsList.appendChild(div);
+                let u=`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(q)}&key=${YOUTUBE_API_KEY}`;
+                if(nextPageToken)u+=`&pageToken=${nextPageToken}`;
+                const res=await fetch(u); const d=await res.json(); loader.remove();
+                if(d.error){alert(d.error.message);return;}
+                nextPageToken=d.nextPageToken||"";
+                d.items.forEach(i=>{
+                    const vid=i.id.videoId; const t=i.snippet.title; const th=i.snippet.thumbnails.medium.url;
+                    const el=document.createElement('div'); el.className='video-item';
+                    el.innerHTML=`<img src="${th}" class="video-thumb"><div class="video-info"><div class="video-title">${t}</div></div>`;
+                    el.onclick=()=>{loadYouTube(vid,t,th)}; resultsList.appendChild(el);
                 });
-            } catch (err) { loader.innerText = "Erro de conexão"; } finally { isFetching = false; }
+            } catch(e){loader.innerText="Erro";} finally{isFetching=false;}
         }
+        resultsList.addEventListener('scroll',()=>{if(resultsList.scrollTop+resultsList.clientHeight>=resultsList.scrollHeight-50 && nextPageToken && !isFetching) fetchVideos(ytInput.value)});
 
-        function parseDuration(pt) {
-            const match = pt.match(/PT(\d+H)?(\d+M)?(\d+S)?/); if (!match) return "";
-            const h = (match[1] || '').replace('H', ''); const m = (match[2] || '').replace('M', ''); const s = (match[3] || '').replace('S', '');
-            let str = ""; if (h) str += h + ":"; str += (h && m.length < 2 ? "0" + m : m || "0") + ":"; str += (s.length < 2 ? "0" + s : s || "00");
-            if (!h && !m) str = "0:" + str.replace(":", ""); if (str.endsWith(':')) str += "00";
-            return str;
-        }
-
-        resultsList.addEventListener('scroll', () => { if (resultsList.scrollTop + resultsList.clientHeight >= resultsList.scrollHeight - 50 && nextPageToken && !isFetching) fetchVideos(); });
+        // Player Logic
+        function loadYouTubeFromInput() { const v=extractVideoID(ytInput.value); if(v) loadYouTube(v,"Link",""); else alert("Link inválido"); }
+        function extractVideoID(u){ const m=u.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/); return (m&&m[2].length===11)?m[2]:null;}
         
-        function loadYouTubeFromInput() {
-            const url = ytInput.value; const videoId = extractVideoID(url);
-            if(!videoId) { alert("Link inválido."); return; } 
-            loadYouTube(videoId, "Link Direto", "");
-        }
-
-        function resetApp() {
-            if(currentVideoURL) URL.revokeObjectURL(currentVideoURL);
-            localStorage.removeItem('ejoy_subs'); localStorage.removeItem('ejoy_vidName');
-            localStorage.removeItem('ejoy_time'); localStorage.removeItem('ejoy_ytUrl'); localStorage.removeItem('ejoy_mode');
-            location.reload(); 
-        }
-        
-        function onYouTubeIframeAPIReady() {}
-        
-        function loadYouTube(videoId, title, thumb) {
-            subtitles = []; subContent.innerHTML = ""; playerType = 'youtube';
-            if(currentVideoURL) { URL.revokeObjectURL(currentVideoURL); currentVideoURL = null; }
-            video.removeAttribute('src'); video.load(); video.style.display = 'none';
-            ytContainer.style.display = 'flex'; gestureLayer.style.display = 'block'; unlockBtn.style.display = 'block'; ytControlsLocked = true;
+        function onYouTubeIframeAPIReady(){}
+        function loadYouTube(vid,title,thumb) {
+            subtitles=[]; subContent.innerHTML=""; playerType='youtube';
+            if(currentVideoURL){URL.revokeObjectURL(currentVideoURL);currentVideoURL=null;}
+            video.removeAttribute('src'); video.load(); video.style.display='none';
+            ytContainer.style.display='flex'; gestureLayer.style.display='block'; unlockBtn.style.display='block'; ytControlsLocked=true;
+            currentPlayingYT={id:vid,title:title||"Video",thumb:thumb||""}; btnFavCurrent.style.display='block';
+            localStorage.setItem('ejoy_ytUrl',`https://www.youtube.com/watch?v=${vid}`); localStorage.setItem('ejoy_mode','youtube');
             
-            currentPlayingYT = { id: videoId, title: title || "Vídeo", thumb: thumb || "" };
-            btnFavCurrent.style.display = 'block';
-
-            localStorage.setItem('ejoy_ytUrl', `https://www.youtube.com/watch?v=${videoId}`); 
-            localStorage.setItem('ejoy_mode', 'youtube');
+            // Resume Logic
+            const savedTime = videoHistory[vid] || 0;
             
-            if(ytPlayer) { ytPlayer.loadVideoById(videoId); } 
-            else { ytPlayer = new YT.Player('yt-player', { height: '100%', width: '100%', videoId: videoId, playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0 }, }); }
+            if(ytPlayer && ytPlayer.loadVideoById) {
+                // Se o player já existe, use o objeto para passar startSeconds
+                ytPlayer.loadVideoById({videoId: vid, startSeconds: savedTime});
+            } else {
+                ytPlayer = new YT.Player('yt-player',{
+                    height:'100%', width:'100%', videoId:vid,
+                    playerVars:{'playsinline':1, 'controls':1, 'rel':0, 'start': Math.floor(savedTime)}
+                });
+            }
             startYTSync();
-        }
-        function toggleYtControls() {
-            const iframe = document.querySelector('iframe');
-            if(ytControlsLocked) { gestureLayer.style.display = 'none'; iframe.style.pointerEvents = 'auto'; unlockBtn.innerText = "🔒 Gestos"; ytControlsLocked = false; }
-            else { gestureLayer.style.display = 'block'; iframe.style.pointerEvents = 'none'; unlockBtn.innerText = "⚙️ YouTube"; ytControlsLocked = true; }
-        }
-        function extractVideoID(url) {
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-            const match = url.match(regExp); return (match && match[2].length === 11) ? match[2] : null;
         }
         function startYTSync() {
             if(ytTimer) clearInterval(ytTimer);
-            ytTimer = setInterval(() => {
-                if(playerType === 'youtube' && ytPlayer && ytPlayer.getCurrentTime) {
-                    const time = ytPlayer.getCurrentTime(); localStorage.setItem('ejoy_time', time); renderLogic(time);
+            ytTimer = setInterval(()=>{
+                if(playerType==='youtube'&&ytPlayer&&ytPlayer.getCurrentTime){
+                    const t=ytPlayer.getCurrentTime();
+                    localStorage.setItem('ejoy_time',t);
+                    // Save specific video history
+                    if(currentPlayingYT && currentPlayingYT.id) {
+                        videoHistory[currentPlayingYT.id] = t;
+                        localStorage.setItem('ejoy_vid_history', JSON.stringify(videoHistory));
+                    }
+                    renderLogic(t);
                 }
-            }, 100);
+            },100);
+        }
+        function toggleYtControls(){
+            const f=document.querySelector('iframe');
+            if(ytControlsLocked){gestureLayer.style.display='none';f.style.pointerEvents='auto';unlockBtn.innerText="🔒 Gestos";ytControlsLocked=false}
+            else{gestureLayer.style.display='block';f.style.pointerEvents='none';unlockBtn.innerText="⚙️ YouTube";ytControlsLocked=true}
         }
 
-        window.onload = () => {
-            const savedSubs = localStorage.getItem('ejoy_subs');
-            if (savedSubs) try { subtitles = JSON.parse(savedSubs); resumeStatus.style.display='block'; resumeStatus.innerText='✅ Legenda'; } catch(e){}
-            if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) document.getElementById('api-key-config').style.display='block';
-            
-            // Carregar Tema
-            if(localStorage.getItem('ejoy_theme') === 'light') document.body.classList.add('light-mode');
-            
-            // Correção Rotação
-            window.addEventListener('resize', fixSubtitlePosition);
-            
-            renderFavorites();
-        };
-        
-        function fixSubtitlePosition() {
-            const rect = subContainer.getBoundingClientRect();
-            if (rect.top > window.innerHeight - 50 || rect.top < 0) {
-                subContainer.style.top = 'auto'; subContainer.style.left = '50%'; subContainer.style.bottom = '12%'; subContainer.style.transform = 'translateX(-50%)';
-            }
-        }
-
-        video.addEventListener('timeupdate', () => {
-            if (playerType === 'local') {
-                localStorage.setItem('ejoy_time', video.currentTime);
-                renderLogic(video.currentTime);
-            }
-        });
-
+        // Local Video
         document.getElementById('videoInput').onchange = e => {
-            const file = e.target.files[0];
-            if(file) {
-                playerType = 'local'; ytContainer.style.display = 'none'; gestureLayer.style.display = 'none'; unlockBtn.style.display = 'none';
-                btnFavCurrent.style.display = 'none';
-                if (currentVideoURL) { URL.revokeObjectURL(currentVideoURL); }
-                video.removeAttribute('src'); video.load(); 
-                currentVideoURL = URL.createObjectURL(file); video.src = currentVideoURL; video.style.display = 'block'; 
-                localStorage.setItem('ejoy_vidName', file.name); localStorage.setItem('ejoy_mode', 'local');
+            const f=e.target.files[0]; if(f){
+                playerType='local'; ytContainer.style.display='none'; gestureLayer.style.display='none'; unlockBtn.style.display='none'; btnFavCurrent.style.display='none';
+                if(currentVideoURL)URL.revokeObjectURL(currentVideoURL); video.removeAttribute('src'); video.load();
+                currentVideoURL=URL.createObjectURL(f); video.src=currentVideoURL; video.style.display='block';
+                localStorage.setItem('ejoy_vidName',f.name); localStorage.setItem('ejoy_mode','local');
             }
         };
-        document.getElementById('subInput').onchange = e => {
-            const file = e.target.files[0];
-            if(file) {
-                const reader = new FileReader();
-                reader.onload = r => { 
-                    try {
-                        const parsed = parseSubtitles(r.target.result); 
-                        if (parsed.length > 0) {
-                            subtitles = parsed; try { localStorage.setItem('ejoy_subs', JSON.stringify(subtitles)); } catch(e){}
-                            resumeStatus.style.display = 'block'; resumeStatus.innerText = "✅ Legenda";
-                        } else { alert("Arquivo vazio."); }
-                    } catch(e) { alert("Erro ao ler."); }
-                };
-                reader.readAsText(file);
-            }
-        };
+        video.addEventListener('timeupdate', ()=>{ if(playerType==='local'){localStorage.setItem('ejoy_time',video.currentTime);renderLogic(video.currentTime)}});
 
-        function parseSubtitles(text) {
-            text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            const pattern = /(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s-->\s(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})[^\n]*\n([\s\S]*?)(?=\n\n|$)/g;
-            const result = []; let match;
-            while ((match = pattern.exec(text)) !== null) {
-                result.push({ start: timeToSec(match[1]), end: timeToSec(match[2]), text: match[3].trim().replace(/\n/g, ' ').replace(/<[^>]*>/g, '') });
+        // Subtitles
+        document.getElementById('subInput').onchange = e => {
+            const f=e.target.files[0]; if(f){
+                const r=new FileReader(); r.onload=res=>{
+                    subtitles=parseSubtitles(res.target.result); 
+                    if(subtitles.length) { document.getElementById('resume-status').style.display='block'; document.getElementById('resume-status').innerText='✅ Legenda OK'; alert("Legenda Carregada!"); }
+                }; r.readAsText(f);
             }
-            return result;
+        };
+        function parseSubtitles(t) {
+            t=t.replace(/\r\n/g,'\n').replace(/\r/g,'\n'); const p=/(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s-->\s(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})[^\n]*\n([\s\S]*?)(?=\n\n|$)/g;
+            const res=[]; let m;
+            while((m=p.exec(t))!==null){ res.push({start:timeToSec(m[1]), end:timeToSec(m[2]), text:m[3].trim().replace(/\n/g,' ').replace(/<[^>]*>/g,'')}); }
+            return res;
         }
-        function timeToSec(str) {
-            str = str.replace(',', '.'); const p = str.split(':');
-            return (parseFloat(p[0])*3600)+(parseFloat(p[1])*60)+parseFloat(p[2]);
-        }
+        function timeToSec(s){ s=s.replace(',','.'); const p=s.split(':'); return (parseFloat(p[0])*3600)+(parseFloat(p[1])*60)+parseFloat(p[2]); }
+
+        // Render
+        let lastRenderedText="";
         function renderLogic(time) {
             const sub = subtitles.find(s => time >= s.start && time <= s.end);
-            if (sub) { if (sub.text !== lastRenderedText) { renderSubtitle(sub.text); lastRenderedText = sub.text; } }
-            else { subContent.innerHTML = ''; lastRenderedText = ""; }
+            if(sub){ if(sub.text!==lastRenderedText){ renderSubtitle(sub.text); lastRenderedText=sub.text; } }
+            else{ subContent.innerHTML=""; lastRenderedText=""; }
         }
         function renderSubtitle(text) {
-            subContent.innerHTML = '';
+            subContent.innerHTML="";
             const words = text.split(' ');
-            words.forEach((w, i) => {
-                const span = document.createElement('span');
-                span.textContent = w + ' '; 
-                span.className = 'word'; 
-                span.dataset.index = i;
-                span.dataset.raw = w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g,"");
-                subContent.appendChild(span);
+            words.forEach((w,i)=>{
+                const s=document.createElement('span'); s.textContent=w+' '; s.className='word'; s.dataset.index=i; s.dataset.raw=w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g,"");
+                subContent.appendChild(s);
             });
-            const btn = document.createElement('span');
-            btn.className = 'translate-btn'; btn.innerHTML = '🌐';
-            
-            btn.addEventListener('touchstart', (e) => {
-                e.stopPropagation(); e.preventDefault(); pauseAnyPlayer();
-                isSelecting = false; document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
-                translateText(text, text);
-            });
-            btn.onclick = (e) => { e.stopPropagation(); pauseAnyPlayer(); translateText(text, text); };
+            const btn=document.createElement('span'); btn.className='translate-btn'; btn.innerHTML='🌐';
+            btn.addEventListener('touchstart',(e)=>{ e.stopPropagation();e.preventDefault(); pauseAny(); isSelecting=false; document.querySelectorAll('.word.selected').forEach(x=>x.classList.remove('selected')); translateText(text,text); });
+            btn.onclick=(e)=>{e.stopPropagation(); pauseAny(); translateText(text,text);};
             subContent.appendChild(btn);
         }
 
-        function pauseAnyPlayer() { if(playerType === 'local') video.pause(); if(playerType === 'youtube' && ytPlayer) ytPlayer.pauseVideo(); }
-        function playAnyPlayer() { if(playerType === 'local') video.play(); if(playerType === 'youtube' && ytPlayer) ytPlayer.playVideo(); }
-        function togglePlayAny() {
-            if(playerType === 'local') video.paused ? video.play() : video.pause();
-            if(playerType === 'youtube' && ytPlayer) (ytPlayer.getPlayerState() === 1) ? ytPlayer.pauseVideo() : ytPlayer.playVideo();
-        }
-        function setTimeAnyPlayer(time) {
-             if(playerType === 'local') video.currentTime = time;
-             if(playerType === 'youtube' && ytPlayer) ytPlayer.seekTo(time, true);
-        }
-        function getCurrentTimeAny() {
-            if(playerType === 'local') return video.currentTime;
-            if(playerType === 'youtube' && ytPlayer) return ytPlayer.getCurrentTime();
-            return 0;
-        }
+        // Control & Gestures
+        function pauseAny(){ if(playerType==='local')video.pause(); else if(ytPlayer)ytPlayer.pauseVideo(); }
+        function playAny(){ if(playerType==='local')video.play(); else if(ytPlayer)ytPlayer.playVideo(); }
+        function togglePlay(){ if(playerType==='local')video.paused?video.play():video.pause(); else if(ytPlayer)(ytPlayer.getPlayerState()===1)?ytPlayer.pauseVideo():ytPlayer.playVideo(); }
+        function seek(t){ if(playerType==='local')video.currentTime=t; else if(ytPlayer)ytPlayer.seekTo(t,true); }
+        function getTime(){ return playerType==='local'?video.currentTime:(ytPlayer?ytPlayer.getCurrentTime():0); }
 
-        dragHandle.addEventListener('touchstart', dragStart, {passive: false});
-        dragHandle.addEventListener('touchmove', dragMove, {passive: false});
-        dragHandle.addEventListener('touchend', dragEnd);
-        
-        function dragStart(e) {
-            e.preventDefault(); isDragging = true;
-            dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
-            const rect = subContainer.getBoundingClientRect();
-            initialTop = rect.top; initialLeft = rect.left;
-            subContainer.style.bottom = 'auto'; subContainer.style.transform = 'none';
-            subContainer.style.top = initialTop + 'px'; subContainer.style.left = initialLeft + 'px';
-        }
-        function dragMove(e) {
-            if (!isDragging) return; e.preventDefault();
-            const dx = e.touches[0].clientX - dragStartX; const dy = e.touches[0].clientY - dragStartY;
-            subContainer.style.top = (initialTop + dy) + 'px'; subContainer.style.left = (initialLeft + dx) + 'px';
-        }
-        function dragEnd() { isDragging = false; }
-
-        textColorInput.addEventListener('input', (e) => subContent.style.color = e.target.value);
-        bgColorInput.addEventListener('input', (e) => {
-            const h = e.target.value;
-            const r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16);
-            subBox.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.7)`;
-        });
-
-        // --- SELEÇÃO DE TEXTO ---
-        subContent.addEventListener('touchstart', (e) => {
-            if(e.target.classList.contains('translate-btn')) return;
-            const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-            if (el && el.classList.contains('word')) {
-                isSelecting = true;
-                pauseAnyPlayer();
-                selectionStartIndex = parseInt(el.dataset.index);
-                transCard.style.display = 'none';
-                updateSelectionRange(selectionStartIndex);
-            }
-        }, {passive: false});
-
-        subContent.addEventListener('touchmove', (e) => {
-            if (!isSelecting) return; e.preventDefault(); 
-            const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-            if (el && el.classList.contains('word')) {
-                const currentIndex = parseInt(el.dataset.index);
-                updateSelectionRange(currentIndex);
-            }
-        }, {passive: false});
-
-        subContent.addEventListener('touchend', () => {
-            if(isSelecting) { isSelecting = false; translateSelection(); }
-        });
-
-        function updateSelectionRange(endIndex) {
-            document.querySelectorAll('.word.selected').forEach(el => el.classList.remove('selected'));
-            const start = Math.min(selectionStartIndex, endIndex);
-            const end = Math.max(selectionStartIndex, endIndex);
-            const words = subContent.querySelectorAll('.word');
-            for(let i=start; i<=end; i++) { if(words[i]) words[i].classList.add('selected'); }
+        function jumpSubtitle(dir) {
+            if(!subtitles.length){seek(getTime()+(dir*10));return;}
+            const now=getTime(); let idx=subtitles.findIndex(s=>s.start>now); if(idx===-1)idx=subtitles.length;
+            let target = (dir===1) ? idx : (subtitles.findIndex(s=>now>=s.start&&now<=s.end)!==-1 ? subtitles.findIndex(s=>now>=s.start&&now<=s.end)-1 : idx-1);
+            if(target<0)target=0; if(target>=subtitles.length)target=subtitles.length-1;
+            seek(subtitles[target].start-0.2);
         }
 
-        function translateSelection() {
-            const selected = document.querySelectorAll('.word.selected');
-            if(selected.length === 0) return;
-            const wordsArray = Array.from(selected);
-            const txt = wordsArray.map(el => el.dataset.raw).join(' ');
-            const display = wordsArray.map(el => el.textContent).join('');
-            translateText(txt, display);
-            setTimeout(() => { selected.forEach(el => el.classList.remove('selected')); }, 1500);
+        // Touch
+        const gz = document.getElementById('gesture-layer'); const gzl = document.getElementById('video-wrapper');
+        function setupGestures(el, mode) {
+            let ts=0,te=0,tt=0;
+            el.addEventListener('touchstart',e=>{if(e.target.closest('#subtitle-container'))return; ts=e.changedTouches[0].screenX; tt=new Date().getTime();},{passive:false});
+            el.addEventListener('touchend',e=>{
+                if(e.target.closest('#subtitle-container'))return; te=e.changedTouches[0].screenX;
+                if((new Date().getTime()-tt)<200 && Math.abs(te-ts)<10) { if(mode==='yt')togglePlay(); }
+                else if(Math.abs(te-ts)>30) { if(te-ts<0)jumpSubtitle(-1); else jumpSubtitle(1); }
+            },{passive:false});
+        }
+        setupGestures(gz,'yt'); setupGestures(gzl,'local');
+
+        // Drag & Select
+        dragHandle.addEventListener('touchstart',e=>{isDragging=true; dragStartX=e.touches[0].clientX; dragStartY=e.touches[0].clientY; const r=subContainer.getBoundingClientRect(); initialTop=r.top; initialLeft=r.left; subContainer.style.bottom='auto'; subContainer.style.transform='none'; subContainer.style.top=initialTop+'px'; subContainer.style.left=initialLeft+'px';},{passive:false});
+        dragHandle.addEventListener('touchmove',e=>{if(!isDragging)return; e.preventDefault(); subContainer.style.top=(initialTop+(e.touches[0].clientY-dragStartY))+'px'; subContainer.style.left=(initialLeft+(e.touches[0].clientX-dragStartX))+'px';},{passive:false});
+        dragHandle.addEventListener('touchend',()=>isDragging=false);
+
+        subContent.addEventListener('touchstart',e=>{
+            if(e.target.classList.contains('translate-btn'))return;
+            const el=document.elementFromPoint(e.touches[0].clientX,e.touches[0].clientY);
+            if(el&&el.classList.contains('word')){isSelecting=true;pauseAny();selectionStartIndex=parseInt(el.dataset.index);transCard.style.display='none';updateRange(selectionStartIndex);}
+        },{passive:false});
+        subContent.addEventListener('touchmove',e=>{if(!isSelecting)return;e.preventDefault();const el=document.elementFromPoint(e.touches[0].clientX,e.touches[0].clientY);if(el&&el.classList.contains('word'))updateRange(parseInt(el.dataset.index));},{passive:false});
+        subContent.addEventListener('touchend',()=>{if(isSelecting){isSelecting=false;doTransSelection();}});
+
+        function updateRange(idx){
+            document.querySelectorAll('.word.selected').forEach(x=>x.classList.remove('selected'));
+            const s=Math.min(selectionStartIndex,idx); const e=Math.max(selectionStartIndex,idx);
+            const w=subContent.querySelectorAll('.word'); for(let i=s;i<=e;i++)if(w[i])w[i].classList.add('selected');
+        }
+        function doTransSelection(){
+            const sel=document.querySelectorAll('.word.selected'); if(!sel.length)return;
+            const w=Array.from(sel); const txt=w.map(x=>x.dataset.raw).join(' '); const dsp=w.map(x=>x.textContent).join('');
+            translateText(txt,dsp); setTimeout(()=>{sel.forEach(x=>x.classList.remove('selected'))},1000);
         }
 
         async function translateText(src, dsp) {
-            currentTranslateSource = src; // Salva para o botão
-            transCard.style.display = 'block'; 
-            transOrig.textContent = dsp; 
-            transRes.className = 'loading'; 
-            transRes.textContent = '...';
-            document.getElementById('btn-save-vocab').innerText = "💾 Salvar"; // Reset botão
+            currentTranslateSource = src;
+            transCard.style.display = 'block'; transOrig.textContent = dsp; 
+            transRes.className = 'loading'; transRes.textContent = '...';
+            document.getElementById('btn-save-vocab').innerText = "💾 Salvar";
             
+            // Removemos a função openGoogleTranslate, então não chamamos nada automático aqui além do MyMemory
             try {
-                // Força par en|pt-BR para melhor qualidade
                 const u = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(src)}&langpair=en|pt-BR`;
                 const r = await fetch(u); const d = await r.json();
-                if(d.responseData) transRes.textContent = d.responseData.translatedText;
-            } catch (e) { transRes.textContent = "Erro na rede"; }
-        }
-
-        const gestureZone = document.getElementById('gesture-layer'); 
-        const gestureZoneLocal = document.getElementById('video-wrapper');
-
-        function attachGestures(element, mode) {
-            let tStart = 0; let tEnd = 0; let tStartTime = 0;
-            element.addEventListener('touchstart', e => {
-                if(e.target.closest('#subtitle-container') || e.target.closest('.translate-btn')) return;
-                tStart = e.changedTouches[0].screenX; tStartTime = new Date().getTime();
-            }, {passive: false});
-            element.addEventListener('touchend', e => {
-                if(e.target.closest('#subtitle-container')) return;
-                tEnd = e.changedTouches[0].screenX;
-                const duration = new Date().getTime() - tStartTime;
-                const diff = tEnd - tStart;
-                if (duration < 200 && Math.abs(diff) < 10) { if (mode === 'yt') togglePlayAny(); } 
-                else if (Math.abs(diff) > 30) {
-                    if (diff < 0) { showFeedback('⏪'); jumpSubtitle(-1); } else { showFeedback('⏩'); jumpSubtitle(1); }
+                if(d.responseData) {
+                    transRes.className = '';
+                    transRes.textContent = d.responseData.translatedText;
                 }
-            }, {passive: false});
-        }
-        attachGestures(gestureZone, 'yt'); attachGestures(gestureZoneLocal, 'local'); 
-
-        function jumpSubtitle(dir) {
-            if (subtitles.length > 0) {
-                const now = getCurrentTimeAny();
-                let idx = subtitles.findIndex(s => s.start > now);
-                if (idx === -1) idx = subtitles.length;
-                let currentIdx = subtitles.findIndex(s => now >= s.start && now <= s.end);
-                let targetIdx;
-                if (dir === 1) targetIdx = idx;
-                else {
-                    if (currentIdx !== -1) targetIdx = currentIdx - 1;
-                    else targetIdx = idx - 1;
-                }
-                if (targetIdx < 0) targetIdx = 0;
-                if (targetIdx >= subtitles.length) targetIdx = subtitles.length - 1;
-                let safeTime = subtitles[targetIdx].start - 0.2;
-                if (safeTime < 0) safeTime = 0;
-                setTimeAnyPlayer(safeTime);
-            } else {
-                const now = getCurrentTimeAny();
-                setTimeAnyPlayer(now + (dir * 10));
-                showFeedback(dir > 0 ? '+10s' : '-10s');
-            }
-            playAnyPlayer();
+            } catch(e) { transRes.textContent = "Erro na rede."; }
         }
 
-        function showFeedback(icon) {
-            gestureIcon.textContent = icon; gestureIcon.style.opacity = 1;
-            setTimeout(() => gestureIcon.style.opacity = 0, 600);
+        // Init
+        textColorInput.addEventListener('input',e=>subContent.style.color=e.target.value);
+        bgColorInput.addEventListener('input',e=>subBox.style.backgroundColor=`${e.target.value}bf`);
+        window.addEventListener('resize',()=>{const r=subContainer.getBoundingClientRect();if(r.top>window.innerHeight-50||r.top<0){subContainer.style.top='auto';subContainer.style.bottom='12%';subContainer.style.left='50%';subContainer.style.transform='translateX(-50%)';}});
+        
+        if(localStorage.getItem('ejoy_theme')==='light')document.body.classList.add('light-mode');
+        
+        function resetApp(){
+            if(currentVideoURL)URL.revokeObjectURL(currentVideoURL);
+            localStorage.removeItem('ejoy_subs');localStorage.removeItem('ejoy_vidName');localStorage.removeItem('ejoy_time');localStorage.removeItem('ejoy_ytUrl');localStorage.removeItem('ejoy_mode');
+            location.reload();
         }
     </script>
 </body>

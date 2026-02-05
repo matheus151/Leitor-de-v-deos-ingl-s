@@ -3,25 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V26.2 - List Fix)</title>
+    <title>Player Estudo Pro (V27.0 - Saved Subs)</title>
     <style>
-        /* --- VARIÁVEIS DE DESIGN (Temas) --- */
+        /* --- VARIÁVEIS DE DESIGN --- */
         :root {
-            /* Tema Escuro (Padrão) */
             --bg-color: #121212;
             --panel-color: #1e1e1e;
             --input-bg: #2c2c2c;
             --border-color: #333;
             --text-main: #eee;
             --text-dim: #aaa;
-            
             --primary: #3498db;
             --accent: #f1c40f;
             --success: #2ecc71;
             --radius: 8px;
         }
 
-        /* Tema Claro (Ativado via classe) */
         body.light-mode {
             --bg-color: #f0f2f5;
             --panel-color: #ffffff;
@@ -81,7 +78,7 @@
         .btn-primary { background: var(--primary); border: none; color: #fff; }
         .btn-fav { color: var(--accent); border-color: var(--accent); }
 
-        /* RESULTADOS & FAVORITOS (AJUSTADO PARA SER COMPACTO) */
+        /* LISTAS (COMPACTO V26.2) */
         .list-container {
             display: none; background: var(--input-bg); border: 1px solid var(--border-color);
             border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
@@ -96,28 +93,20 @@
 
         .scroll-list {
             display: flex; flex-direction: column; 
-            padding: 0; /* Removido padding para ficar igual YT */
-            gap: 0;     /* Sem gap, usa borda */
-            max-height: 50vh; /* Altura maior */
-            overflow-y: auto; transition: max-height 0.3s ease;
+            padding: 0; gap: 0;
+            max-height: 50vh; overflow-y: auto; transition: max-height 0.3s ease;
         }
         .scroll-list.hidden { max-height: 0; padding: 0; }
 
         .video-item {
             display: flex; gap: 10px; padding: 10px; 
-            background: transparent; /* Fundo transparente */
-            cursor: pointer; align-items: flex-start; 
-            border-bottom: 1px solid var(--border-color); /* Linha divisória */
-            transition: background 0.2s;
+            background: transparent; cursor: pointer; align-items: flex-start; 
+            border-bottom: 1px solid var(--border-color); transition: background 0.2s;
             position: relative;
         }
         .video-item:active { background: rgba(255,255,255,0.05); }
         
-        /* THUMB PEQUENA (RESTAURADA) */
-        .video-thumb-wrapper { 
-            position: relative; width: 100px; height: 56px; /* Tamanho clássico 16:9 pequeno */
-            flex-shrink: 0; 
-        }
+        .video-thumb-wrapper { position: relative; width: 100px; height: 56px; flex-shrink: 0; }
         .video-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
         .video-duration {
             position: absolute; bottom: 2px; right: 2px; 
@@ -125,13 +114,8 @@
             font-size: 0.65rem; padding: 1px 3px; border-radius: 2px;
         }
         .video-info { flex-grow: 1; overflow: hidden; }
-        .video-title { 
-            font-size: 0.85rem; line-height: 1.2; margin-bottom: 4px; 
-            font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; 
-            -webkit-box-orient: vertical; overflow: hidden; color: var(--text-main); 
-        }
+        .video-title { font-size: 0.85rem; line-height: 1.2; margin-bottom: 4px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--text-main); }
         .video-channel { font-size: 0.75rem; color: var(--text-dim); }
-        
         .loading-more { text-align: center; color: var(--text-dim); padding: 10px; font-size: 0.8rem; }
 
         .btn-del-fav {
@@ -169,7 +153,7 @@
         
         .btn-reset { 
             background: var(--input-bg); border: 1px solid var(--border-color); color: #e74c3c; width: 100%; 
-            padding: 10px; border-radius: var(--radius); font-weight: bold; margin-top: 5px;
+            padding: 10px; border-radius: var(--radius); font-weight: bold; margin-top: 5px; cursor: pointer;
         }
         
         #btn-fav-current {
@@ -190,7 +174,7 @@
             background: rgba(46, 204, 113, 0.1); padding: 4px; border-radius: 4px;
         }
 
-        /* ESTILOS (Font/Cor) */
+        /* ESTILOS */
         #style-controls {
             display: flex; justify-content: space-between; align-items: center;
             background: var(--input-bg); padding: 8px; border-radius: var(--radius);
@@ -264,7 +248,7 @@
             font-size: 12px; cursor: pointer; vertical-align: middle; opacity: 0.9;
         }
 
-        /* CARD TRADUÇÃO APRIMORADO */
+        /* CARD TRADUÇÃO */
         #translation-card {
             display: none; position: absolute; top: 10%; left: 50%;
             transform: translateX(-50%); width: 90%;
@@ -403,7 +387,7 @@
         // --- SISTEMA GERAL ---
         let vocabList = JSON.parse(localStorage.getItem('ejoy_vocab')) || [];
         let favorites = JSON.parse(localStorage.getItem('ejoy_favs')) || [];
-        let videoHistory = JSON.parse(localStorage.getItem('ejoy_vid_history')) || {}; // RESUME
+        let videoHistory = JSON.parse(localStorage.getItem('ejoy_vid_history')) || {};
 
         let currentTranslateSource = ""; 
         let currentPlayingYT = null;
@@ -468,11 +452,14 @@
             if(!vocabList.includes(currentTranslateSource)){vocabList.push(currentTranslateSource);localStorage.setItem('ejoy_vocab',JSON.stringify(vocabList));document.getElementById('btn-save-vocab').innerText="✅";setTimeout(()=>document.getElementById('btn-save-vocab').innerText="💾 Salvar",1500);}
             else{alert("Já salvo");}
         }
+        
+        // MODIFICADO: \n\n
         function downloadVocabulary() {
             if(!vocabList.length){alert("Vazio");return;}
-            const b=new Blob([vocabList.join('\n')],{type:'text/plain'});
+            const b=new Blob([vocabList.join('\n\n')],{type:'text/plain'});
             const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='vocab.txt';document.body.appendChild(a);a.click();document.body.removeChild(a);
         }
+        
         function toggleFavorites() { 
             const c=document.getElementById('favorites-container'); c.style.display = c.style.display==='block'?'none':'block';
             if(c.style.display==='block') renderFavorites();
@@ -482,19 +469,39 @@
             favorites.forEach((fav,i)=>{
                 const d=document.createElement('div'); d.className='video-item';
                 d.innerHTML=`<div class="video-thumb-wrapper"><img src="${fav.thumb}" class="video-thumb"></div><div class="video-info"><div class="video-title">${fav.title}</div></div><button class="btn-del-fav" onclick="removeFavorite(event,${i})">🗑️</button>`;
-                d.onclick=(e)=>{if(!e.target.classList.contains('btn-del-fav'))loadYouTube(fav.id,fav.title,fav.thumb)};
+                // MODIFICADO: Passar savedSubs
+                d.onclick=(e)=>{if(!e.target.classList.contains('btn-del-fav'))loadYouTube(fav.id,fav.title,fav.thumb,fav.savedSubs)};
                 favoritesList.appendChild(d);
             });
         }
+        
+        // MODIFICADO: Salvar Legendas
         function addCurrentToFavorites() {
-            if(!currentPlayingYT)return; if(favorites.some(f=>f.id===currentPlayingYT.id)){alert("Já existe");return;}
-            favorites.push(currentPlayingYT); localStorage.setItem('ejoy_favs',JSON.stringify(favorites)); alert("Salvo!"); renderFavorites();
+            if (!currentPlayingYT) return;
+            const existingIdx = favorites.findIndex(f => f.id === currentPlayingYT.id);
+            const favObj = {
+                ...currentPlayingYT,
+                savedSubs: (subtitles && subtitles.length > 0) ? subtitles : null
+            };
+
+            if (existingIdx !== -1) { favorites[existingIdx] = favObj; alert("Atualizado (com legenda)!"); } 
+            else { favorites.push(favObj); alert("Favoritado!"); }
+            
+            try {
+                localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
+                renderFavorites();
+            } catch(e) {
+                alert("Erro: Memória cheia. Salvo sem legenda.");
+                delete favObj.savedSubs;
+                if(existingIdx !== -1) favorites[existingIdx] = favObj; else favorites.push(favObj);
+                localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
+            }
         }
         function removeFavorite(e,i){e.stopPropagation();if(confirm("Apagar?")){favorites.splice(i,1);localStorage.setItem('ejoy_favs',JSON.stringify(favorites));renderFavorites();}}
 
         function openExternalDownSub(){const u=localStorage.getItem('ejoy_ytUrl');if(playerType!=='youtube'||!u){alert("Abra um vídeo YT");return;}window.open(`https://downsub.com/?url=${encodeURIComponent(u)}`,'_blank');}
 
-        // Busca YT (LISTA COMPACTA V26.2)
+        // Busca YT (COMPACTO V26.2)
         let nextPageToken=""; let isFetching=false;
         async function initSearch() {
             const q=ytInput.value.trim(); if(q.includes('youtu')){loadYouTubeFromInput();return;}
@@ -545,7 +552,9 @@
         function extractVideoID(u){ const m=u.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/); return (m&&m[2].length===11)?m[2]:null;}
         
         function onYouTubeIframeAPIReady(){}
-        function loadYouTube(vid,title,thumb) {
+        
+        // MODIFICADO: Carregar Legendas Salvas e Resume
+        function loadYouTube(vid,title,thumb, savedSubs=null) {
             subtitles=[]; subContent.innerHTML=""; playerType='youtube';
             if(currentVideoURL){URL.revokeObjectURL(currentVideoURL);currentVideoURL=null;}
             video.removeAttribute('src'); video.load(); video.style.display='none';
@@ -553,7 +562,14 @@
             currentPlayingYT={id:vid,title:title||"Video",thumb:thumb||""}; btnFavCurrent.style.display='block';
             localStorage.setItem('ejoy_ytUrl',`https://www.youtube.com/watch?v=${vid}`); localStorage.setItem('ejoy_mode','youtube');
             
-            // RESUME LOGIC (START SECONDS)
+            // Subs
+            if(savedSubs && savedSubs.length>0) {
+                subtitles = savedSubs;
+                document.getElementById('resume-status').style.display='block'; 
+                document.getElementById('resume-status').innerText='✅ Legenda Salva';
+            }
+
+            // Resume
             const savedTime = videoHistory[vid] || 0;
 
             if(ytPlayer && ytPlayer.loadVideoById) {
@@ -570,7 +586,6 @@
                 if(playerType==='youtube'&&ytPlayer&&ytPlayer.getCurrentTime){
                     const t=ytPlayer.getCurrentTime();
                     localStorage.setItem('ejoy_time',t);
-                    // SAVE HISTORY
                     if(currentPlayingYT && currentPlayingYT.id) {
                         videoHistory[currentPlayingYT.id] = t;
                         localStorage.setItem('ejoy_vid_history', JSON.stringify(videoHistory));

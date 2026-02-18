@@ -650,7 +650,7 @@
         function seek(t){ if(playerType==='local')video.currentTime=t; else if(ytPlayer)ytPlayer.seekTo(t,true); }
         function getTime(){ return playerType==='local'?video.currentTime:(ytPlayer?ytPlayer.getCurrentTime():0); }
         
-        // V27.2: JUMP EXACT & FAST
+        // --- JUMP EXACT & FAST (V27.2 FIX) ---
         function jumpSubtitle(dir) {
             if(!subtitles.length) { seek(getTime()+(dir*10)); return; } 
             const now = getTime(); 
@@ -662,19 +662,24 @@
             } else {
                 let currentIdx = subtitles.findIndex(s => now >= s.start && now <= s.end);
                 if (currentIdx !== -1) {
-                    if (now - subtitles[currentIdx].start > 0.5) targetIdx = currentIdx;
-                    else targetIdx = currentIdx - 1;
+                    targetIdx = currentIdx - 1; // Pula exatamente para a anterior, sem repetir a atual
                 } else {
-                    let nextIdx = subtitles.findIndex(s => s.start > now);
-                    targetIdx = nextIdx === -1 ? subtitles.length - 1 : nextIdx - 1;
+                    targetIdx = -1;
+                    for (let i = subtitles.length - 1; i >= 0; i--) {
+                        if (subtitles[i].start < now - 0.1) {
+                            targetIdx = i;
+                            break;
+                        }
+                    }
                 }
             }
+            
             if(targetIdx < 0) targetIdx = 0; 
             if(targetIdx >= subtitles.length) targetIdx = subtitles.length - 1; 
             
             const exactTime = subtitles[targetIdx].start;
             seek(exactTime);
-            renderLogic(exactTime + 0.01); // Instant UI Update
+            renderLogic(exactTime + 0.01); // Atualização instantânea da interface (mais rápido)
         }
 
         function setupGestures(el, mode) {

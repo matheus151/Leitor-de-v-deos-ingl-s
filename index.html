@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V27.1 - Clear Vocab)</title>
+    <title>Player Estudo Pro (V27.2 - Fast Seek)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN --- */
         :root {
@@ -251,7 +251,7 @@
             font-size: 12px; cursor: pointer; vertical-align: middle; opacity: 0.9;
         }
 
-        /* CARD TRADUÇÃO APRIMORADO */
+        /* CARD TRADUÇÃO */
         #translation-card {
             display: none; position: absolute; top: 10%; left: 50%;
             transform: translateX(-50%); width: 90%;
@@ -459,7 +459,6 @@
             else{alert("Já salvo");}
         }
         
-        // V27: Linha em branco extra
         function downloadVocabulary() {
             if(!vocabList.length){alert("Vazio");return;}
             const b=new Blob([vocabList.join('\n\n')],{type:'text/plain'});
@@ -484,13 +483,11 @@
             favorites.forEach((fav,i)=>{
                 const d=document.createElement('div'); d.className='video-item';
                 d.innerHTML=`<div class="video-thumb-wrapper"><img src="${fav.thumb}" class="video-thumb"></div><div class="video-info"><div class="video-title">${fav.title}</div></div><button class="btn-del-fav" onclick="removeFavorite(event,${i})">🗑️</button>`;
-                // Passa savedSubs
                 d.onclick=(e)=>{if(!e.target.classList.contains('btn-del-fav'))loadYouTube(fav.id,fav.title,fav.thumb,fav.savedSubs)};
                 favoritesList.appendChild(d);
             });
         }
         
-        // V27: Salvar Legendas
         function addCurrentToFavorites() {
             if (!currentPlayingYT) return;
             const existingIdx = favorites.findIndex(f => f.id === currentPlayingYT.id);
@@ -571,14 +568,12 @@
             currentPlayingYT={id:vid,title:title||"Video",thumb:thumb||""}; btnFavCurrent.style.display='block';
             localStorage.setItem('ejoy_ytUrl',`https://www.youtube.com/watch?v=${vid}`); localStorage.setItem('ejoy_mode','youtube');
             
-            // Prioridade: Legenda Salva
-            if(savedSubs && savedSubs.length > 0) {
+            if(savedSubs && savedSubs.length>0) {
                 subtitles = savedSubs;
                 document.getElementById('resume-status').style.display='block'; 
                 document.getElementById('resume-status').innerText='✅ Legenda Salva';
             }
 
-            // Resume
             const savedTime = videoHistory[vid] || 0;
 
             if(ytPlayer && ytPlayer.loadVideoById) {
@@ -648,17 +643,40 @@
             btn.onclick=(e)=>{e.stopPropagation(); pauseAny(); translateText(text,text);}; subContent.appendChild(btn);
         }
 
-        // Gestures & Drag
+        // Control & Gestures
         function pauseAny(){ if(playerType==='local')video.pause(); else if(ytPlayer)ytPlayer.pauseVideo(); }
         function playAny(){ if(playerType==='local')video.play(); else if(ytPlayer)ytPlayer.playVideo(); }
         function togglePlay(){ if(playerType==='local')video.paused?video.play():video.pause(); else if(ytPlayer)(ytPlayer.getPlayerState()===1)?ytPlayer.pauseVideo():ytPlayer.playVideo(); }
         function seek(t){ if(playerType==='local')video.currentTime=t; else if(ytPlayer)ytPlayer.seekTo(t,true); }
         function getTime(){ return playerType==='local'?video.currentTime:(ytPlayer?ytPlayer.getCurrentTime():0); }
+        
+        // V27.2: JUMP EXACT & FAST
         function jumpSubtitle(dir) {
-            if(!subtitles.length){seek(getTime()+(dir*10));return;} const now=getTime(); let idx=subtitles.findIndex(s=>s.start>now); if(idx===-1)idx=subtitles.length;
-            let target = (dir===1) ? idx : (subtitles.findIndex(s=>now>=s.start&&now<=s.end)!==-1 ? subtitles.findIndex(s=>now>=s.start&&now<=s.end)-1 : idx-1);
-            if(target<0)target=0; if(target>=subtitles.length)target=subtitles.length-1; seek(subtitles[target].start-0.2);
+            if(!subtitles.length) { seek(getTime()+(dir*10)); return; } 
+            const now = getTime(); 
+            let targetIdx = 0;
+
+            if (dir === 1) {
+                targetIdx = subtitles.findIndex(s => s.start > now + 0.1);
+                if(targetIdx === -1) targetIdx = subtitles.length - 1;
+            } else {
+                let currentIdx = subtitles.findIndex(s => now >= s.start && now <= s.end);
+                if (currentIdx !== -1) {
+                    if (now - subtitles[currentIdx].start > 0.5) targetIdx = currentIdx;
+                    else targetIdx = currentIdx - 1;
+                } else {
+                    let nextIdx = subtitles.findIndex(s => s.start > now);
+                    targetIdx = nextIdx === -1 ? subtitles.length - 1 : nextIdx - 1;
+                }
+            }
+            if(targetIdx < 0) targetIdx = 0; 
+            if(targetIdx >= subtitles.length) targetIdx = subtitles.length - 1; 
+            
+            const exactTime = subtitles[targetIdx].start;
+            seek(exactTime);
+            renderLogic(exactTime + 0.01); // Instant UI Update
         }
+
         function setupGestures(el, mode) {
             let ts=0,te=0,tt=0;
             el.addEventListener('touchstart',e=>{if(e.target.closest('#subtitle-container'))return; ts=e.changedTouches[0].screenX; tt=new Date().getTime();},{passive:false});

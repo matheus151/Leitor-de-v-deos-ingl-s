@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V27.2 - Fast Seek)</title>
+    <title>Player Estudo Pro (V27.3 - Sync Fix)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN --- */
         :root {
@@ -650,7 +650,7 @@
         function seek(t){ if(playerType==='local')video.currentTime=t; else if(ytPlayer)ytPlayer.seekTo(t,true); }
         function getTime(){ return playerType==='local'?video.currentTime:(ytPlayer?ytPlayer.getCurrentTime():0); }
         
-        // --- JUMP EXACT & FAST (V27.2 FIX) ---
+        // --- JUMP EXACT & FAST FIX (V27.3) ---
         function jumpSubtitle(dir) {
             if(!subtitles.length) { seek(getTime()+(dir*10)); return; } 
             const now = getTime(); 
@@ -662,7 +662,7 @@
             } else {
                 let currentIdx = subtitles.findIndex(s => now >= s.start && now <= s.end);
                 if (currentIdx !== -1) {
-                    targetIdx = currentIdx - 1; // Pula exatamente para a anterior, sem repetir a atual
+                    targetIdx = currentIdx - 1; 
                 } else {
                     targetIdx = -1;
                     for (let i = subtitles.length - 1; i >= 0; i--) {
@@ -677,9 +677,13 @@
             if(targetIdx < 0) targetIdx = 0; 
             if(targetIdx >= subtitles.length) targetIdx = subtitles.length - 1; 
             
-            const exactTime = subtitles[targetIdx].start;
-            seek(exactTime);
-            renderLogic(exactTime + 0.01); // Atualização instantânea da interface (mais rápido)
+            // Recuo de 0.3s (buffer) para o YouTube não cortar a primeira sílaba
+            let safeTime = subtitles[targetIdx].start - 0.3;
+            if (safeTime < 0) safeTime = 0;
+
+            seek(safeTime);
+            // Atualiza a legenda imediatamente com o tempo exato real
+            renderLogic(subtitles[targetIdx].start + 0.01); 
         }
 
         function setupGestures(el, mode) {

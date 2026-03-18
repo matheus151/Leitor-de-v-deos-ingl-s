@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V27.3 - Sync Fix)</title>
+    <title>Player Estudo Pro (V27.4 - Local Favs & Big Thumbs)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN --- */
         :root {
@@ -78,7 +78,7 @@
         .btn-primary { background: var(--primary); border: none; color: #fff; }
         .btn-fav { color: var(--accent); border-color: var(--accent); }
 
-        /* LISTAS (COMPACTO V26.2) */
+        /* LISTAS */
         .list-container {
             display: none; background: var(--input-bg); border: 1px solid var(--border-color);
             border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
@@ -98,29 +98,30 @@
         }
         .scroll-list.hidden { max-height: 0; padding: 0; }
 
+        /* AUMENTADO TAMANHO DA LISTA E DAS THUMBNAILS */
         .video-item {
-            display: flex; gap: 10px; padding: 10px; 
+            display: flex; gap: 15px; padding: 15px; 
             background: transparent; cursor: pointer; align-items: flex-start; 
             border-bottom: 1px solid var(--border-color); transition: background 0.2s;
             position: relative;
         }
         .video-item:active { background: rgba(255,255,255,0.05); }
         
-        .video-thumb-wrapper { position: relative; width: 100px; height: 56px; flex-shrink: 0; }
-        .video-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+        .video-thumb-wrapper { position: relative; width: 160px; height: 90px; flex-shrink: 0; }
+        .video-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
         .video-duration {
-            position: absolute; bottom: 2px; right: 2px; 
+            position: absolute; bottom: 4px; right: 4px; 
             background: rgba(0,0,0,0.85); color: #fff; 
-            font-size: 0.65rem; padding: 1px 3px; border-radius: 2px;
+            font-size: 0.75rem; padding: 2px 4px; border-radius: 3px; font-weight: bold;
         }
         .video-info { flex-grow: 1; overflow: hidden; }
-        .video-title { font-size: 0.85rem; line-height: 1.2; margin-bottom: 4px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--text-main); }
-        .video-channel { font-size: 0.75rem; color: var(--text-dim); }
-        .loading-more { text-align: center; color: var(--text-dim); padding: 10px; font-size: 0.8rem; }
+        .video-title { font-size: 1rem; line-height: 1.3; margin-bottom: 6px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; color: var(--text-main); }
+        .video-channel { font-size: 0.85rem; color: var(--text-dim); }
+        .loading-more { text-align: center; color: var(--text-dim); padding: 15px; font-size: 0.9rem; }
 
         .btn-del-fav {
-            background: #c0392b; color: #fff; border: none; padding: 5px 10px;
-            border-radius: 4px; font-size: 0.7rem; margin-left: 5px;
+            background: #c0392b; color: #fff; border: none; padding: 6px 12px;
+            border-radius: 4px; font-size: 0.8rem; margin-left: 5px; cursor: pointer;
         }
 
         /* API KEY CONFIG */
@@ -147,10 +148,10 @@
             border: none; padding: 12px; border-radius: var(--radius); 
             font-size: 0.8rem; font-weight: 600; cursor: pointer; text-align: center; color: #fff;
             display: flex; align-items: center; justify-content: center; gap: 6px;
-            text-decoration: none;
+            text-decoration: none; width: 100%;
         }
         .btn-yt-dl { background: #c0392b; } 
-        
+
         .btn-reset { 
             background: var(--input-bg); border: 1px solid var(--border-color); color: #e74c3c; width: 100%; 
             padding: 10px; border-radius: var(--radius); font-weight: bold; margin-top: 5px; cursor: pointer;
@@ -173,8 +174,8 @@
         }
 
         #resume-status { 
-            font-size: 0.75rem; color: var(--success); text-align: center; margin: 8px 0; display: none; 
-            background: rgba(46, 204, 113, 0.1); padding: 4px; border-radius: 4px;
+            font-size: 0.8rem; font-weight: bold; text-align: center; margin: 8px 0; display: none; 
+            padding: 6px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1);
         }
 
         /* ESTILOS */
@@ -316,7 +317,7 @@
             <div id="favorites-list" class="scroll-list"></div>
         </div>
 
-        <button id="btn-fav-current" onclick="addCurrentToFavorites()">❤️ Favoritar Vídeo Atual</button>
+        <button id="btn-fav-current" onclick="addCurrentToFavorites()">❤️ Favoritar Vídeo Atual (Salva Progresso)</button>
 
         <div class="grid-row">
             <label class="file-label">
@@ -324,13 +325,13 @@
                 <input type="file" id="videoInput" accept="video/mp4, video/x-m4v, video/*">
             </label>
             <label class="file-label">
-                <span>📝</span> Legenda
+                <span>📝</span> Legenda Local
                 <input type="file" id="subInput" accept="*">
             </label>
         </div>
 
         <div class="grid-row" style="grid-template-columns: 1fr;">
-            <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">⬇️ Baixar Legenda YouTube (DownSub)</button>
+            <button class="btn-external btn-yt-dl" onclick="openExternalDownSub()">⬇️ Legenda DownSub (Site Backup)</button>
         </div>
         
         <div class="grid-row" style="margin-top: 5px;">
@@ -384,12 +385,6 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --- BING TRANSLATOR ---
-        function openBingTranslator() {
-            if(!currentTranslateSource) return;
-            window.open(`https://www.bing.com/translator?from=en&to=pt&text=${encodeURIComponent(currentTranslateSource)}`, '_blank');
-        }
-
         // --- SISTEMA GERAL ---
         let vocabList = JSON.parse(localStorage.getItem('ejoy_vocab')) || [];
         let favorites = JSON.parse(localStorage.getItem('ejoy_favs')) || [];
@@ -397,6 +392,8 @@
 
         let currentTranslateSource = ""; 
         let currentPlayingYT = null;
+        let currentLocalFileName = ""; // Rastreamento do nome do arquivo local
+        
         let YOUTUBE_API_KEY = localStorage.getItem('ejoy_api_key') || "";
         let currentVideoURL = null; 
         let currentFontSize = 1.2;
@@ -478,42 +475,72 @@
             const c=document.getElementById('favorites-container'); c.style.display = c.style.display==='block'?'none':'block';
             if(c.style.display==='block') renderFavorites();
         }
+
+        // NOVO: Renderiza Favoritos (com distinção entre Local e YouTube)
         function renderFavorites() {
             favoritesList.innerHTML=""; if(!favorites.length){favoritesList.innerHTML="<div style='padding:10px;text-align:center'>Vazio</div>";return;}
             favorites.forEach((fav,i)=>{
                 const d=document.createElement('div'); d.className='video-item';
-                d.innerHTML=`<div class="video-thumb-wrapper"><img src="${fav.thumb}" class="video-thumb"></div><div class="video-info"><div class="video-title">${fav.title}</div></div><button class="btn-del-fav" onclick="removeFavorite(event,${i})">🗑️</button>`;
-                d.onclick=(e)=>{if(!e.target.classList.contains('btn-del-fav'))loadYouTube(fav.id,fav.title,fav.thumb,fav.savedSubs)};
+                d.innerHTML=`<div class="video-thumb-wrapper"><img src="${fav.thumb}" class="video-thumb"></div><div class="video-info"><div class="video-title">${fav.title}</div><div class="video-channel">${fav.isLocal ? "Arquivo Local Salvo" : "YouTube"}</div></div><button class="btn-del-fav" onclick="removeFavorite(event,${i})">🗑️</button>`;
+                
+                d.onclick=(e)=>{
+                    if(!e.target.classList.contains('btn-del-fav')){
+                        if (fav.isLocal) {
+                            loadLocalFavorite(fav);
+                        } else {
+                            loadYouTube(fav.id, fav.title, fav.thumb, fav.savedSubs);
+                        }
+                    }
+                };
                 favoritesList.appendChild(d);
             });
         }
         
-        function addCurrentToFavorites() {
-            if (!currentPlayingYT) return;
-            const existingIdx = favorites.findIndex(f => f.id === currentPlayingYT.id);
-            const favObj = {
-                ...currentPlayingYT,
-                savedSubs: (subtitles && subtitles.length > 0) ? subtitles : null
-            };
+        // NOVO: Função que lida com o clique num favorito local
+        function loadLocalFavorite(fav) {
+            alert(`O navegador exige que você selecione o arquivo manualmente por segurança.\n\nPor favor, clique em OK e selecione o vídeo:\n"${fav.title}"`);
+            window.pendingLocalFav = fav; // Seta a flag para recuperar o tempo e legenda
+            document.getElementById('videoInput').click(); // Abre o seletor de arquivos
+        }
 
-            if (existingIdx !== -1) { favorites[existingIdx] = favObj; alert("Atualizado (com legenda)!"); } 
-            else { favorites.push(favObj); alert("Salvo!"); }
-            
-            try {
-                localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
-                renderFavorites();
-            } catch(e) {
-                alert("Erro: Memória cheia. Salvo sem legenda.");
-                delete favObj.savedSubs;
-                if(existingIdx !== -1) favorites[existingIdx] = favObj; else favorites.push(favObj);
-                localStorage.setItem('ejoy_favs', JSON.stringify(favorites));
+        // NOVO: Salvar progresso de vídeos locais e YouTube
+        function addCurrentToFavorites() {
+            if (playerType === 'youtube' && currentPlayingYT) {
+                const existingIdx = favorites.findIndex(f => f.id === currentPlayingYT.id);
+                const favObj = {
+                    ...currentPlayingYT,
+                    savedSubs: (subtitles && subtitles.length > 0) ? subtitles : null
+                };
+
+                if (existingIdx !== -1) { favorites[existingIdx] = favObj; alert("Favorito YouTube Atualizado (com legenda)!"); } 
+                else { favorites.push(favObj); alert("YouTube Salvo nos Favoritos!"); }
+                
+                try { localStorage.setItem('ejoy_favs', JSON.stringify(favorites)); renderFavorites(); } 
+                catch(e) { alert("Erro: Memória cheia. Salvo sem legenda."); delete favObj.savedSubs; if(existingIdx !== -1) favorites[existingIdx] = favObj; else favorites.push(favObj); localStorage.setItem('ejoy_favs', JSON.stringify(favorites)); }
+            } 
+            else if (playerType === 'local' && currentLocalFileName) {
+                const favObj = {
+                    id: 'local_' + currentLocalFileName,
+                    title: currentLocalFileName,
+                    thumb: 'https://img.icons8.com/color/160/000000/video-file.png', // Ícone genérico para vídeos locais
+                    isLocal: true,
+                    savedSubs: (subtitles && subtitles.length > 0) ? subtitles : null,
+                    time: video.currentTime
+                };
+
+                const existingIdx = favorites.findIndex(f => f.id === favObj.id);
+                if (existingIdx !== -1) { favorites[existingIdx] = favObj; alert("Progresso do Vídeo Local Atualizado!"); } 
+                else { favorites.push(favObj); alert("Vídeo Local Salvo nos Favoritos com sucesso!"); }
+                
+                try { localStorage.setItem('ejoy_favs', JSON.stringify(favorites)); renderFavorites(); } 
+                catch(e) { alert("Erro: Memória cheia. Salvo sem legenda."); delete favObj.savedSubs; if(existingIdx !== -1) favorites[existingIdx] = favObj; else favorites.push(favObj); localStorage.setItem('ejoy_favs', JSON.stringify(favorites)); }
             }
         }
-        function removeFavorite(e,i){e.stopPropagation();if(confirm("Apagar?")){favorites.splice(i,1);localStorage.setItem('ejoy_favs',JSON.stringify(favorites));renderFavorites();}}
+        function removeFavorite(e,i){e.stopPropagation();if(confirm("Apagar dos Favoritos?")){favorites.splice(i,1);localStorage.setItem('ejoy_favs',JSON.stringify(favorites));renderFavorites();}}
 
         function openExternalDownSub(){const u=localStorage.getItem('ejoy_ytUrl');if(playerType!=='youtube'||!u){alert("Abra um vídeo YT");return;}window.open(`https://downsub.com/?url=${encodeURIComponent(u)}`,'_blank');}
 
-        // Busca YT
+        // Busca YT (THUMBNAILS AUMENTADAS VIA CSS)
         let nextPageToken=""; let isFetching=false;
         async function initSearch() {
             const q=ytInput.value.trim(); if(q.includes('youtu')){loadYouTubeFromInput();return;}
@@ -561,18 +588,22 @@
         function onYouTubeIframeAPIReady(){}
         
         function loadYouTube(vid,title,thumb, savedSubs=null) {
-            subtitles=[]; subContent.innerHTML=""; playerType='youtube';
+            subtitles=[]; subContent.innerHTML=""; playerType='youtube'; currentLocalFileName="";
             if(currentVideoURL){URL.revokeObjectURL(currentVideoURL);currentVideoURL=null;}
             video.removeAttribute('src'); video.load(); video.style.display='none';
             ytContainer.style.display='flex'; gestureLayer.style.display='block'; unlockBtn.style.display='block'; ytControlsLocked=true;
             currentPlayingYT={id:vid,title:title||"Video",thumb:thumb||""}; btnFavCurrent.style.display='block';
             localStorage.setItem('ejoy_ytUrl',`https://www.youtube.com/watch?v=${vid}`); localStorage.setItem('ejoy_mode','youtube');
             
+            const statusEl = document.getElementById('resume-status');
+            statusEl.style.display = 'none';
+
             if(savedSubs && savedSubs.length>0) {
                 subtitles = savedSubs;
-                document.getElementById('resume-status').style.display='block'; 
-                document.getElementById('resume-status').innerText='✅ Legenda Salva';
-            }
+                statusEl.style.display='block'; 
+                statusEl.style.color='var(--success)';
+                statusEl.innerText='✅ Legenda Salva do Favorito Carregada';
+            } 
 
             const savedTime = videoHistory[vid] || 0;
 
@@ -603,29 +634,64 @@
             else{gestureLayer.style.display='block';f.style.pointerEvents='none';unlockBtn.innerText="⚙️ YouTube";ytControlsLocked=true}
         }
 
-        // Local Video
+        // Local Video (ATUALIZADO PARA RECUPERAR O FAVORITO)
         document.getElementById('videoInput').onchange = e => {
             const f=e.target.files[0]; if(f){
-                playerType='local'; ytContainer.style.display='none'; gestureLayer.style.display='none'; unlockBtn.style.display='none'; btnFavCurrent.style.display='none';
+                playerType='local'; ytContainer.style.display='none'; gestureLayer.style.display='none'; unlockBtn.style.display='none'; btnFavCurrent.style.display='block';
                 if(currentVideoURL)URL.revokeObjectURL(currentVideoURL); video.removeAttribute('src'); video.load();
                 currentVideoURL=URL.createObjectURL(f); video.src=currentVideoURL; video.style.display='block';
+                currentLocalFileName = f.name; // Salva o nome para o favorito
                 localStorage.setItem('ejoy_vidName',f.name); localStorage.setItem('ejoy_mode','local');
+                currentPlayingYT = null; // Reseta YouTube
+                
+                const statusEl = document.getElementById('resume-status');
+                
+                // NOVO: Restauração de Favorito Local
+                if (window.pendingLocalFav && window.pendingLocalFav.title === f.name) {
+                    subtitles = window.pendingLocalFav.savedSubs || [];
+                    if(subtitles.length > 0) {
+                        statusEl.style.display='block'; statusEl.style.color='var(--success)';
+                        statusEl.innerText='✅ Legenda restaurada do Favorito!';
+                    } else {
+                        statusEl.style.display='none';
+                    }
+                    // Aguarda o vídeo carregar os metadados para poder pular para o tempo exato
+                    video.onloadedmetadata = () => {
+                        video.currentTime = window.pendingLocalFav.time || 0;
+                        video.onloadedmetadata = null; // Limpa o evento
+                    };
+                    window.pendingLocalFav = null; // Limpa a flag
+                } else {
+                    window.pendingLocalFav = null; 
+                    subtitles = []; // Reseta legenda caso seja um vídeo novo
+                    subContent.innerHTML = "";
+                    statusEl.style.display='none';
+                }
             }
         };
+        
         video.addEventListener('timeupdate', ()=>{ if(playerType==='local'){localStorage.setItem('ejoy_time',video.currentTime);renderLogic(video.currentTime)}});
+        
         document.getElementById('subInput').onchange = e => {
             const f=e.target.files[0]; if(f){
                 const r=new FileReader(); r.onload=res=>{
-                    subtitles=parseSubtitles(res.target.result); 
-                    if(subtitles.length) { document.getElementById('resume-status').style.display='block'; document.getElementById('resume-status').innerText='✅ Legenda OK'; alert("Legenda Carregada!"); }
+                    subtitles=parseSubtitlesLocal(res.target.result); 
+                    if(subtitles.length) { 
+                        localStorage.setItem('ejoy_subs', JSON.stringify(subtitles));
+                        const statusEl = document.getElementById('resume-status');
+                        statusEl.style.display='block'; 
+                        statusEl.style.color='var(--success)';
+                        statusEl.innerText='✅ Arquivo de Legenda OK'; 
+                        alert("Legenda Carregada!"); 
+                    }
                 }; r.readAsText(f);
             }
         };
-        function parseSubtitles(t) {
+        function parseSubtitlesLocal(t) {
             t=t.replace(/\r\n/g,'\n').replace(/\r/g,'\n'); const p=/(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s-->\s(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})[^\n]*\n([\s\S]*?)(?=\n\n|$)/g;
-            const res=[]; let m; while((m=p.exec(t))!==null){ res.push({start:timeToSec(m[1]), end:timeToSec(m[2]), text:m[3].trim().replace(/\n/g,' ').replace(/<[^>]*>/g,'')}); } return res;
+            const res=[]; let m; while((m=p.exec(t))!==null){ res.push({start:timeToSecLocal(m[1]), end:timeToSecLocal(m[2]), text:m[3].trim().replace(/\n/g,' ').replace(/<[^>]*>/g,'')}); } return res;
         }
-        function timeToSec(s){ s=s.replace(',','.'); const p=s.split(':'); return (parseFloat(p[0])*3600)+(parseFloat(p[1])*60)+parseFloat(p[2]); }
+        function timeToSecLocal(s){ s=s.replace(',','.'); const p=s.split(':'); return (parseFloat(p[0])*3600)+(parseFloat(p[1])*60)+parseFloat(p[2]); }
 
         // Render
         let lastRenderedText="";
@@ -650,7 +716,7 @@
         function seek(t){ if(playerType==='local')video.currentTime=t; else if(ytPlayer)ytPlayer.seekTo(t,true); }
         function getTime(){ return playerType==='local'?video.currentTime:(ytPlayer?ytPlayer.getCurrentTime():0); }
         
-        // --- JUMP EXACT & FAST FIX (V27.3) ---
+        // V27.3: JUMP EXACT & FAST
         function jumpSubtitle(dir) {
             if(!subtitles.length) { seek(getTime()+(dir*10)); return; } 
             const now = getTime(); 
@@ -677,12 +743,10 @@
             if(targetIdx < 0) targetIdx = 0; 
             if(targetIdx >= subtitles.length) targetIdx = subtitles.length - 1; 
             
-            // Recuo de 0.3s (buffer) para o YouTube não cortar a primeira sílaba
             let safeTime = subtitles[targetIdx].start - 0.3;
             if (safeTime < 0) safeTime = 0;
 
             seek(safeTime);
-            // Atualiza a legenda imediatamente com o tempo exato real
             renderLogic(subtitles[targetIdx].start + 0.01); 
         }
 
@@ -719,10 +783,7 @@
         
         window.onload = () => {
             if(localStorage.getItem('ejoy_theme')==='light') document.body.classList.add('light-mode');
-            const savedSubs = localStorage.getItem('ejoy_subs');
-            if (savedSubs) try { subtitles = JSON.parse(savedSubs); resumeStatus.style.display='block'; resumeStatus.innerText='✅ Legenda'; } catch(e){}
             if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) document.getElementById('api-key-config').style.display='block';
-            window.addEventListener('resize', fixSubtitlePosition);
             renderFavorites();
         };
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V27.4 - Local Favs & Big Thumbs)</title>
+    <title>Player Estudo Pro (V27.5 - Bing Fix)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN --- */
         :root {
@@ -774,6 +774,12 @@
                 const u = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(src)}&langpair=en|pt-BR`;
                 const r = await fetch(u); const d = await r.json(); if(d.responseData) { transRes.className = ''; transRes.textContent = d.responseData.translatedText; }
             } catch(e) { transRes.textContent = "Erro na rede."; }
+        }
+
+        // BING TRADUTOR - FUNÇÃO RESTAURADA
+        function openBingTranslator() {
+            if(!currentTranslateSource) return;
+            window.open(`https://www.bing.com/translator?from=en&to=pt&text=${encodeURIComponent(currentTranslateSource)}`, '_blank');
         }
 
         // Init

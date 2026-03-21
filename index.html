@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Player Estudo Pro (V27.5 - Bing Fix)</title>
+    <title>Player Estudo Pro (V27.6 - Tradução e Vocab)</title>
     <style>
         /* --- VARIÁVEIS DE DESIGN --- */
         :root {
@@ -252,7 +252,7 @@
             font-size: 12px; cursor: pointer; vertical-align: middle; opacity: 0.9;
         }
 
-        /* CARD TRADUÇÃO */
+        /* CARD TRADUÇÃO (ATUALIZADO) */
         #translation-card {
             display: none; position: absolute; top: 10%; left: 50%;
             transform: translateX(-50%); width: 90%;
@@ -261,8 +261,10 @@
             box-shadow: 0 8px 30px rgba(0,0,0,0.5); z-index: 100;
             text-align: center; border: 1px solid #ccc;
         }
-        #phrase-orig { font-weight: bold; color: #555; margin-bottom: 6px; font-size: 0.9rem; }
-        #phrase-trans { font-size: 1.3rem; font-weight: 800; color: #000; line-height: 1.2; margin-bottom: 15px; }
+        
+        /* Retirados os font-sizes fixos, eles agora são controlados por JS para ficarem iguais */
+        #phrase-orig { font-weight: bold; color: #555; margin-bottom: 6px; line-height: 1.2; }
+        #phrase-trans { font-weight: 800; color: #000; line-height: 1.2; margin-bottom: 15px; }
         
         /* Botões do Card */
         .trans-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
@@ -372,6 +374,13 @@
         </div>
 
         <div id="translation-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-size: 0.75rem; color: #888;">Tradução</span>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="changeCardFontSize(-0.1)" style="border:none; background:#eee; padding:4px 10px; border-radius:4px; font-weight:bold; cursor:pointer; color:#333;">A-</button>
+                    <button onclick="changeCardFontSize(0.1)" style="border:none; background:#eee; padding:4px 10px; border-radius:4px; font-weight:bold; cursor:pointer; color:#333;">A+</button>
+                </div>
+            </div>
             <div id="phrase-orig">Original</div>
             <div id="phrase-trans">Tradução...</div>
             <div class="trans-actions">
@@ -428,6 +437,22 @@
         const btnFavCurrent = document.getElementById('btn-fav-current');
         const dragHandle = document.getElementById('drag-handle');
 
+        // NOVO: Controle de Fonte do Card de Tradução (salva no localStorage)
+        let cardFontSize = parseFloat(localStorage.getItem('ejoy_card_font')) || 1.1;
+        
+        function applyCardFontSize() {
+            if(transOrig) transOrig.style.fontSize = cardFontSize + 'rem';
+            if(transRes) transRes.style.fontSize = cardFontSize + 'rem';
+        }
+        
+        function changeCardFontSize(d) {
+            cardFontSize += d;
+            if(cardFontSize < 0.7) cardFontSize = 0.7;
+            if(cardFontSize > 2.5) cardFontSize = 2.5;
+            localStorage.setItem('ejoy_card_font', cardFontSize);
+            applyCardFontSize();
+        }
+
         // UI Helpers
         function changeFontSize(d) { currentFontSize+=d; if(currentFontSize<0.5)currentFontSize=0.5; if(currentFontSize>3)currentFontSize=3; subBox.style.fontSize=currentFontSize+'rem'; }
         function toggleMainUI() { 
@@ -456,10 +481,11 @@
             else{alert("Já salvo");}
         }
         
+        // ATUALIZADO: Download com linha simples, sem pular
         function downloadVocabulary() {
             if(!vocabList.length){alert("Vazio");return;}
-            const b=new Blob([vocabList.join('\n\n')],{type:'text/plain'});
-            const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='vocab.txt';document.body.appendChild(a);a.click();document.body.removeChild(a);
+            const b=new Blob([vocabList.join('\n')],{type:'text/plain'});
+            const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='vocabulario.txt';document.body.appendChild(a);a.click();document.body.removeChild(a);
         }
 
         function clearVocabulary() {
@@ -476,7 +502,7 @@
             if(c.style.display==='block') renderFavorites();
         }
 
-        // NOVO: Renderiza Favoritos (com distinção entre Local e YouTube)
+        // Renderiza Favoritos (com distinção entre Local e YouTube)
         function renderFavorites() {
             favoritesList.innerHTML=""; if(!favorites.length){favoritesList.innerHTML="<div style='padding:10px;text-align:center'>Vazio</div>";return;}
             favorites.forEach((fav,i)=>{
@@ -496,14 +522,14 @@
             });
         }
         
-        // NOVO: Função que lida com o clique num favorito local
+        // Função que lida com o clique num favorito local
         function loadLocalFavorite(fav) {
             alert(`O navegador exige que você selecione o arquivo manualmente por segurança.\n\nPor favor, clique em OK e selecione o vídeo:\n"${fav.title}"`);
             window.pendingLocalFav = fav; // Seta a flag para recuperar o tempo e legenda
             document.getElementById('videoInput').click(); // Abre o seletor de arquivos
         }
 
-        // NOVO: Salvar progresso de vídeos locais e YouTube
+        // Salvar progresso de vídeos locais e YouTube
         function addCurrentToFavorites() {
             if (playerType === 'youtube' && currentPlayingYT) {
                 const existingIdx = favorites.findIndex(f => f.id === currentPlayingYT.id);
@@ -540,7 +566,7 @@
 
         function openExternalDownSub(){const u=localStorage.getItem('ejoy_ytUrl');if(playerType!=='youtube'||!u){alert("Abra um vídeo YT");return;}window.open(`https://downsub.com/?url=${encodeURIComponent(u)}`,'_blank');}
 
-        // Busca YT (THUMBNAILS AUMENTADAS VIA CSS)
+        // Busca YT
         let nextPageToken=""; let isFetching=false;
         async function initSearch() {
             const q=ytInput.value.trim(); if(q.includes('youtu')){loadYouTubeFromInput();return;}
@@ -634,7 +660,7 @@
             else{gestureLayer.style.display='block';f.style.pointerEvents='none';unlockBtn.innerText="⚙️ YouTube";ytControlsLocked=true}
         }
 
-        // Local Video (ATUALIZADO PARA RECUPERAR O FAVORITO)
+        // Local Video (COM RECUPERAÇÃO DO FAVORITO)
         document.getElementById('videoInput').onchange = e => {
             const f=e.target.files[0]; if(f){
                 playerType='local'; ytContainer.style.display='none'; gestureLayer.style.display='none'; unlockBtn.style.display='none'; btnFavCurrent.style.display='block';
@@ -646,7 +672,6 @@
                 
                 const statusEl = document.getElementById('resume-status');
                 
-                // NOVO: Restauração de Favorito Local
                 if (window.pendingLocalFav && window.pendingLocalFav.title === f.name) {
                     subtitles = window.pendingLocalFav.savedSubs || [];
                     if(subtitles.length > 0) {
@@ -658,9 +683,9 @@
                     // Aguarda o vídeo carregar os metadados para poder pular para o tempo exato
                     video.onloadedmetadata = () => {
                         video.currentTime = window.pendingLocalFav.time || 0;
-                        video.onloadedmetadata = null; // Limpa o evento
+                        video.onloadedmetadata = null; 
                     };
-                    window.pendingLocalFav = null; // Limpa a flag
+                    window.pendingLocalFav = null; 
                 } else {
                     window.pendingLocalFav = null; 
                     subtitles = []; // Reseta legenda caso seja um vídeo novo
@@ -776,7 +801,7 @@
             } catch(e) { transRes.textContent = "Erro na rede."; }
         }
 
-        // BING TRADUTOR - FUNÇÃO RESTAURADA
+        // BING TRADUTOR 
         function openBingTranslator() {
             if(!currentTranslateSource) return;
             window.open(`https://www.bing.com/translator?from=en&to=pt&text=${encodeURIComponent(currentTranslateSource)}`, '_blank');
@@ -791,6 +816,7 @@
             if(localStorage.getItem('ejoy_theme')==='light') document.body.classList.add('light-mode');
             if(!YOUTUBE_API_KEY && !localStorage.getItem('ejoy_api_key')) document.getElementById('api-key-config').style.display='block';
             renderFavorites();
+            applyCardFontSize(); // Aplica a fonte do card ao iniciar
         };
 
         function resetApp(){
